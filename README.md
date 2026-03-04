@@ -25,7 +25,8 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
 - **First-run wizard** — guided setup on first launch
 - **Cross-platform** — macOS, Linux, Windows (WSL)
-- **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Baofeng, and more
+- **Multi-mode support** — FM and DMR stable; System Fusion (Yaesu) and D-Star (Icom) experimental; P-25, NXDN, M17, Tetra scaffolded
+- **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Yaesu, Icom, Baofeng, and more
 
 ## Requirements
 
@@ -83,6 +84,8 @@ Any radio supported by dmrconf. Common models:
 - TYT MD-UV390, MD-380, MD-390
 - Radioddity GD-77, GD-73
 - Baofeng DM-1801
+- Yaesu FT3D, FT5D *(System Fusion — experimental)*
+- Icom ID-51, ID-52 *(D-Star — experimental)*
 
 ## Supported Modes
 
@@ -151,7 +154,7 @@ When writing to radio, dmrconf shows `[0%]` then exits with "Upload completed" �
 
 ## Troubleshooting
 
-See [docs/troubleshooting.md](docs/troubleshooting.md) or [open an issue](https://github.com/yourusername/plugsmith/issues).
+See [docs/troubleshooting.md](docs/troubleshooting.md) or [open an issue](https://github.com/bigshotClay/plugsmith/issues).
 
 ## License
 

@@ -72,7 +72,7 @@ config.yaml has a valid `callsign` set.
 1. Check Python version: `python3 --version` (must be 3.11+)
 2. Reinstall: `pip install --upgrade plugsmith`
 3. Check for a corrupt config: `rm ~/.config/plugsmith/config.toml` (re-runs wizard)
-4. [Open an issue](https://github.com/yourusername/plugsmith/issues) with the full traceback
+4. [Open an issue](https://github.com/bigshotClay/plugsmith/issues) with the full traceback
 
 ---
 
@@ -85,5 +85,5 @@ The output log in the Build and Radio tabs captures per-operation output.
 
 ## Getting more help
 
-- [GitHub Issues](https://github.com/yourusername/plugsmith/issues) — bug reports
-- [Docs](https://github.com/yourusername/plugsmith/tree/main/docs) — full documentation
+- [GitHub Issues](https://github.com/bigshotClay/plugsmith/issues) — bug reports
+- [Docs](https://github.com/bigshotClay/plugsmith/tree/main/docs) — full documentation

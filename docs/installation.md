@@ -77,7 +77,7 @@ sudo usermod -aG dialout $USER
 ## Development Install
 
 ```bash
-git clone https://github.com/yourusername/plugsmith
+git clone https://github.com/bigshotClay/plugsmith
 cd plugsmith
 pip install -e ".[dev]"
 ```
