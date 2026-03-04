@@ -39,7 +39,7 @@ src/plugsmith/
     radio_screen.py    — RadioPane (dmrconf subprocess)
     config_editor.py   — ConfigEditorPane
     setup_wizard.py    — SetupWizardScreen
-    modals.py          — ConfirmModal, ErrorModal, FilePickerModal
+    modals.py          — ConfirmModal, ErrorModal, FilePickerModal, WriteAcknowledgeModal
     roaming_screen.py  — RoamingPane (Roaming tab)
     roaming_zone_modal.py — RoamingZoneModal (3-step add/edit modal)
   widgets/

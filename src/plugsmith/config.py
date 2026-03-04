@@ -25,6 +25,11 @@ class PlugsmithConfig:
     radio_model: str = ""         # e.g. d878uv2
     backup_dir: str = "backups"   # relative to codeplug_config dir, or absolute
     init_codeplug: bool = True    # pass --init-codeplug on write
+    update_device_clock: bool = False   # --update-device-clock on write
+    auto_enable_gps: bool = False       # --auto-enable-gps on write
+    auto_enable_roaming: bool = False   # --auto-enable-roaming on write
+    callsign_db_path: str = ""          # path to user DB json for write-db / encode-db
+    callsign_limit: int = 0             # --limit N (0 = omit flag)
     last_tab: str = "tab-dashboard"
     hw_submitted_firmware: str = ""  # firmware version recorded at last hw config submission
 

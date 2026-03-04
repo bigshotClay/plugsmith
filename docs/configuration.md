@@ -14,7 +14,12 @@ Created by the setup wizard. Edit manually or use the setup wizard.
 | `device` | string | `""` | USB device handle (e.g. `cu.usbmodem0000000100001`) |
 | `radio_model` | string | `""` | dmrconf radio key (e.g. `d878uv2`) |
 | `backup_dir` | string | `"backups"` | Backup directory (relative to config or absolute) |
-| `init_codeplug` | bool | `true` | Pass `--init-codeplug` on write |
+| `init_codeplug` | bool | `true` | Pass `--init-codeplug` on write (erases radio before write — recommended) |
+| `update_device_clock` | bool | `false` | Pass `--update-device-clock` on write (sync radio clock to system time) |
+| `auto_enable_gps` | bool | `false` | Pass `--auto-enable-gps` on write (enable GPS if supported by radio) |
+| `auto_enable_roaming` | bool | `false` | Pass `--auto-enable-roaming` on write (enable roaming if supported) |
+| `callsign_db_path` | string | `""` | Path to a local callsign DB JSON file for `write-db` / `encode-db`. Empty = download from BrandMeister |
+| `callsign_limit` | int | `0` | Max entries for callsign DB operations (`--limit N`). `0` = no limit |
 | `last_tab` | string | `"tab-dashboard"` | Restore last active tab on launch |
 
 Example:
@@ -26,6 +31,11 @@ device = "cu.usbmodem0000000100001"
 radio_model = "d878uv2"
 backup_dir = "backups"
 init_codeplug = true
+update_device_clock = false
+auto_enable_gps = false
+auto_enable_roaming = false
+callsign_db_path = ""
+callsign_limit = 0
 last_tab = "tab-build"
 ```
 

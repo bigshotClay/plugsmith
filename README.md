@@ -20,7 +20,7 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 
 - **Build codeplugs from RepeaterBook** — all 50 states, tiered by distance from your QTH
 - **DMR talkgroup fetching** — pulls live TG lists from BrandMeister and TGIF; fills your radio's full contact capacity (up to 10,000 TGs) and uses actual per-repeater TS1/TS2 assignments from RadioID instead of generic defaults
-- **Write, read, verify** directly to your radio via dmrconf
+- **Write, read, verify, encode, decode** directly to/from your radio via dmrconf — plus offline YAML↔DFU conversion and callsign DB programming
 - **Live streaming output** — see every API fetch and dmrconf log line as it happens
 - **In-app config editor** — change callsign, location, filters without leaving the TUI
 - **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
@@ -92,7 +92,7 @@ After the wizard, you're dropped into the main interface with four tabs:
 |-----|-------------|
 | **Dashboard** | Codeplug stats + quick-launch buttons |
 | **Build** | Fetch RepeaterBook data and generate codeplug.yaml |
-| **Radio** | Detect, read, write, and verify with dmrconf |
+| **Radio** | Detect, read (.yaml/.dfu/.csv), write, verify, encode/decode, callsign DB |
 | **Config** | Edit config.yaml fields in-app |
 | **Roaming** | Add/edit/delete roaming zone definitions |
 

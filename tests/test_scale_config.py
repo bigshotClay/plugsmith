@@ -176,54 +176,35 @@ class TestMissingSections:
         assert result["home_region"]["dmr_talkgroups_per_repeater"] == 7
 
 
-class TestFusionDStarScaling:
-    """Fusion and D-Star caps are scaled alongside FM and DMR."""
+class TestFusionScaling:
+    """Fusion caps are scaled alongside FM and DMR."""
 
     def test_home_fusion_scaled_d878uv2(self):
         result = scale_config_to_radio({}, D878, {})
         assert result["home_region"]["max_fusion_per_state"] == 50
 
-    def test_home_dstar_scaled_d878uv2(self):
-        result = scale_config_to_radio({}, D878, {})
-        assert result["home_region"]["max_dstar_per_state"] == 30
-
     def test_adjacent_fusion_scaled_d878uv2(self):
         result = scale_config_to_radio({}, D878, {})
         assert result["adjacent_region"]["max_fusion_per_state"] == 10
-
-    def test_adjacent_dstar_scaled_d878uv2(self):
-        result = scale_config_to_radio({}, D878, {})
-        assert result["adjacent_region"]["max_dstar_per_state"] == 5
 
     def test_shallow_fusion_scaled_d878uv2(self):
         result = scale_config_to_radio({}, D878, {})
         assert result["shallow_region"]["max_fusion_freqs"] == 3
 
-    def test_shallow_dstar_scaled_d878uv2(self):
-        result = scale_config_to_radio({}, D878, {})
-        assert result["shallow_region"]["max_dstar_freqs"] == 2
-
     def test_home_fusion_scaled_gd77(self):
         result = scale_config_to_radio({}, GD77, {})
         assert result["home_region"]["max_fusion_per_state"] == _scaled(50)
 
-    def test_home_dstar_scaled_gd77(self):
-        result = scale_config_to_radio({}, GD77, {})
-        assert result["home_region"]["max_dstar_per_state"] == _scaled(30)
-
-    def test_all_new_caps_at_least_one_for_tiny_radio(self):
+    def test_fusion_cap_at_least_one_for_tiny_radio(self):
         tiny = RadioProfile("tiny", "Tiny", 10, 10, 8, "generic", None, frozenset({"fm"}))
         result = scale_config_to_radio({}, tiny, {})
-        for key in ("max_fusion_per_state", "max_dstar_per_state"):
-            assert result["home_region"][key] >= 1
-        for key in ("max_fusion_per_state", "max_dstar_per_state"):
-            assert result["adjacent_region"][key] >= 1
-        for key in ("max_fusion_freqs", "max_dstar_freqs"):
-            assert result["shallow_region"][key] >= 1
+        assert result["home_region"]["max_fusion_per_state"] >= 1
+        assert result["adjacent_region"]["max_fusion_per_state"] >= 1
+        assert result["shallow_region"]["max_fusion_freqs"] >= 1
 
 
 class TestEstimateChannelsUncapped:
-    """estimate_channels_uncapped() accounts for Fusion and D-Star."""
+    """estimate_channels_uncapped() accounts for Fusion."""
 
     def test_fusion_counted_when_enabled(self):
         from plugsmith.builder.zones import estimate_channels_uncapped
@@ -242,28 +223,6 @@ class TestEstimateChannelsUncapped:
 
         r = make_repeater(is_fm=False, is_fusion=True, state_abbr="MO")
         config = {"modes": {"fm": False, "dmr": False, "fusion": False},
-                  "home_region": {"dmr_talkgroups_per_repeater": 7},
-                  "simplex": {"channels": []}}
-        count = estimate_channels_uncapped([r], {"MO": "home"}, config)
-        assert count == 0
-
-    def test_dstar_counted_when_enabled(self):
-        from plugsmith.builder.zones import estimate_channels_uncapped
-        from tests.conftest import make_repeater
-
-        r = make_repeater(is_fm=False, is_dstar=True, state_abbr="MO")
-        config = {"modes": {"fm": False, "dmr": False, "dstar": True},
-                  "home_region": {"dmr_talkgroups_per_repeater": 7},
-                  "simplex": {"channels": []}}
-        count = estimate_channels_uncapped([r], {"MO": "home"}, config)
-        assert count == 1
-
-    def test_dstar_not_counted_when_disabled(self):
-        from plugsmith.builder.zones import estimate_channels_uncapped
-        from tests.conftest import make_repeater
-
-        r = make_repeater(is_fm=False, is_dstar=True, state_abbr="MO")
-        config = {"modes": {"fm": False, "dmr": False, "dstar": False},
                   "home_region": {"dmr_talkgroups_per_repeater": 7},
                   "simplex": {"channels": []}}
         count = estimate_channels_uncapped([r], {"MO": "home"}, config)

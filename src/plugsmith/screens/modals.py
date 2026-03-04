@@ -1,13 +1,14 @@
-"""Shared modal dialogs: ConfirmModal, ErrorModal, FilePickerModal."""
+"""Shared modal dialogs: ConfirmModal, ErrorModal, FilePickerModal, WriteAcknowledgeModal."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Button, DirectoryTree, Input, Label, Static
+from textual.widgets import Button, Checkbox, DirectoryTree, Input, Label, Static
 
 
 class ConfirmModal(ModalScreen[bool]):
@@ -169,3 +170,69 @@ class FilePickerModal(ModalScreen[Path | None]):
                 self.dismiss(None)
         else:
             self.dismiss(None)
+
+
+class WriteAcknowledgeModal(ModalScreen[bool]):
+    """Safety gate before writing to radio: warns about experimental status, requires backup confirmation."""
+
+    DEFAULT_CSS = """
+    WriteAcknowledgeModal {
+        align: center middle;
+    }
+    WriteAcknowledgeModal Vertical {
+        background: $panel;
+        border: thick $warning;
+        padding: 1 2;
+        width: 70;
+        height: auto;
+    }
+    WriteAcknowledgeModal .warning-title {
+        color: $warning;
+        padding-bottom: 1;
+    }
+    WriteAcknowledgeModal .body-text {
+        padding: 0 0 1 0;
+    }
+    WriteAcknowledgeModal Checkbox {
+        margin-bottom: 1;
+    }
+    WriteAcknowledgeModal Horizontal {
+        height: 3;
+        align: right middle;
+    }
+    WriteAcknowledgeModal Button {
+        margin: 0 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Label("[bold]⚠ Experimental Software Warning[/bold]", classes="warning-title")
+            yield Static(
+                "plugsmith is experimental software. Writing an incompatible or "
+                "incorrect codeplug to your radio could render it inoperable.\n\n"
+                "Before proceeding, ensure you have a current backup of your radio "
+                "by using [bold]Read .dfu[/bold] or [bold]Read .yaml[/bold] above.",
+                classes="body-text",
+                markup=True,
+            )
+            yield Checkbox(
+                "I have a backup of my radio and accept the risk",
+                id="cb-backup",
+                value=False,
+            )
+            with Horizontal():
+                yield Button("Continue", id="btn-continue", variant="warning", disabled=True)
+                yield Button("Cancel", id="btn-cancel", variant="default")
+
+    @on(Checkbox.Changed, "#cb-backup")
+    def _on_check(self, event: Checkbox.Changed) -> None:
+        self.query_one("#btn-continue", Button).disabled = not event.value
+
+    @on(Button.Pressed, "#btn-continue")
+    def _confirm(self) -> None:
+        self.dismiss(True)
+
+    @on(Button.Pressed, "#btn-cancel")
+    def _cancel(self) -> None:
+        self.dismiss(False)

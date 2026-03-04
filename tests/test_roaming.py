@@ -47,7 +47,6 @@ def _make_repeater(
         status="On-air",
         is_fm=is_fm,
         is_dmr=is_dmr,
-        is_dstar=False,
         is_fusion=False,
         is_nxdn=False,
         is_p25=False,

@@ -51,3 +51,72 @@ def test_codeplug_yaml_path_explicit():
         codeplug_yaml="/home/user/ham/my.yaml",
     )
     assert cfg.codeplug_yaml_path == Path("/home/user/ham/my.yaml")
+
+
+# ---------------------------------------------------------------------------
+# New write-option fields (added in 0.4.0)
+# ---------------------------------------------------------------------------
+
+
+def test_new_fields_have_correct_defaults():
+    cfg = PlugsmithConfig()
+    assert cfg.update_device_clock is False
+    assert cfg.auto_enable_gps is False
+    assert cfg.auto_enable_roaming is False
+    assert cfg.callsign_db_path == ""
+    assert cfg.callsign_limit == 0
+
+
+def test_new_fields_persist_through_save_reload(tmp_path, monkeypatch):
+    monkeypatch.setattr("plugsmith.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("plugsmith.config.CONFIG_FILE", tmp_path / "config.toml")
+
+    cfg = PlugsmithConfig(
+        update_device_clock=True,
+        auto_enable_gps=True,
+        auto_enable_roaming=True,
+        callsign_db_path="/tmp/db.json",
+        callsign_limit=1000,
+    )
+    cfg.save()
+
+    loaded = load_app_config()
+    assert loaded.update_device_clock is True
+    assert loaded.auto_enable_gps is True
+    assert loaded.auto_enable_roaming is True
+    assert loaded.callsign_db_path == "/tmp/db.json"
+    assert loaded.callsign_limit == 1000
+
+
+def test_init_codeplug_defaults_true():
+    cfg = PlugsmithConfig()
+    assert cfg.init_codeplug is True
+
+
+def test_init_codeplug_persists_false(tmp_path, monkeypatch):
+    monkeypatch.setattr("plugsmith.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("plugsmith.config.CONFIG_FILE", tmp_path / "config.toml")
+
+    cfg = PlugsmithConfig(init_codeplug=False)
+    cfg.save()
+    loaded = load_app_config()
+    assert loaded.init_codeplug is False
+
+
+def test_callsign_limit_zero_is_default():
+    """Zero means 'omit --limit flag' — ensure it round-trips cleanly."""
+    cfg = PlugsmithConfig(callsign_limit=0)
+    assert cfg.callsign_limit == 0
+
+
+def test_backup_dir_path_absolute():
+    cfg = PlugsmithConfig(backup_dir="/absolute/backups")
+    assert cfg.backup_dir_path == Path("/absolute/backups")
+
+
+def test_backup_dir_path_relative_to_config():
+    cfg = PlugsmithConfig(
+        codeplug_config="/home/user/ham/config.yaml",
+        backup_dir="backups",
+    )
+    assert cfg.backup_dir_path == Path("/home/user/ham/backups")

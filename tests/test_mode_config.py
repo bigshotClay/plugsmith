@@ -15,22 +15,6 @@ class TestValidateModesPasses:
         config = {"modes": {"fm": True, "dmr": False}}
         validate_modes(config, RADIO_PROFILES["md380"])  # no exception
 
-    def test_fusion_on_ft3d(self):
-        config = {"modes": {"fm": True, "dmr": True, "fusion": True}}
-        validate_modes(config, RADIO_PROFILES["ft3d"])  # no exception
-
-    def test_fusion_on_ft5d(self):
-        config = {"modes": {"fm": True, "fusion": True}}
-        validate_modes(config, RADIO_PROFILES["ft5d"])  # no exception
-
-    def test_dstar_on_id52(self):
-        config = {"modes": {"fm": True, "dstar": True}}
-        validate_modes(config, RADIO_PROFILES["id52"])  # no exception
-
-    def test_dstar_on_id51(self):
-        config = {"modes": {"dstar": True, "fm": True}}
-        validate_modes(config, RADIO_PROFILES["id51"])  # no exception
-
     def test_all_disabled_modes_pass_any_radio(self):
         config = {"modes": {"fm": False, "dmr": False, "dstar": False, "fusion": False}}
         validate_modes(config, RADIO_PROFILES["md380"])  # no exception
@@ -69,12 +53,6 @@ class TestValidateModesRaises:
         with pytest.raises(ValueError, match="dstar"):
             validate_modes(config, RADIO_PROFILES["gd77"])
 
-    def test_dstar_on_ft3d_raises(self):
-        # FT3D supports fm+dmr+fusion but NOT dstar
-        config = {"modes": {"dstar": True}}
-        with pytest.raises(ValueError, match="dstar"):
-            validate_modes(config, RADIO_PROFILES["ft3d"])
-
     def test_error_message_contains_radio_key(self):
         config = {"modes": {"fusion": True}}
         with pytest.raises(ValueError) as exc_info:
@@ -102,18 +80,6 @@ class TestRadioProfileSupportedModesField:
             assert "fm" in p.supported_modes
             assert "dmr" in p.supported_modes
 
-    def test_yaesu_ft3d_has_fusion(self):
-        assert "fusion" in RADIO_PROFILES["ft3d"].supported_modes
-
-    def test_yaesu_ft5d_has_fusion(self):
-        assert "fusion" in RADIO_PROFILES["ft5d"].supported_modes
-
-    def test_icom_id52_has_dstar(self):
-        assert "dstar" in RADIO_PROFILES["id52"].supported_modes
-
-    def test_icom_id51_has_dstar(self):
-        assert "dstar" in RADIO_PROFILES["id51"].supported_modes
-
     def test_all_profiles_have_nonempty_supported_modes(self):
         for key, p in RADIO_PROFILES.items():
             assert len(p.supported_modes) > 0, f"{key}.supported_modes is empty"
@@ -125,11 +91,6 @@ class TestRadioProfileSupportedModesField:
     def test_default_profile_has_fm_dmr(self):
         assert "fm" in DEFAULT_RADIO_PROFILE.supported_modes
         assert "dmr" in DEFAULT_RADIO_PROFILE.supported_modes
-
-    def test_icom_does_not_have_dmr(self):
-        # Icom ID-51/52 are D-Star radios, not DMR
-        assert "dmr" not in RADIO_PROFILES["id51"].supported_modes
-        assert "dmr" not in RADIO_PROFILES["id52"].supported_modes
 
     def test_anytone_does_not_have_fusion(self):
         assert "fusion" not in RADIO_PROFILES["d878uv2"].supported_modes

@@ -2,6 +2,20 @@
 
 All notable changes to plugsmith will be documented here.
 
+## [0.4.0] — 2026-03-04
+
+### Added
+- **Radio tab: Read .csv** — export radio codeplug to Anytone CPS CSV format
+- **Radio tab: Info** — display codeplug.yaml summary offline (channel count, zones, TGs) via `dmrconf info`
+- **Radio tab: Format Conversion collapsible** — encode YAML → DFU and decode DFU → YAML without a connected radio
+- **Radio tab: Callsign Database collapsible** — write DMR ID callsign DB to radio (`write-db`) or encode to file (`encode-db`)
+- **Write Options collapsible** — four toggles controlling write flags: Init codeplug, Sync device clock, Auto-enable GPS, Auto-enable roaming. Switch state persists to `config.toml` on every toggle
+- **WriteAcknowledgeModal** — two-gate safety flow before write: acknowledge experimental status + confirm backup exists (checkbox required), then confirm specific write operation
+- 5 new `config.toml` fields: `update_device_clock`, `auto_enable_gps`, `auto_enable_roaming`, `callsign_db_path`, `callsign_limit`
+
+### Fixed
+- `--init-codeplug` write flag was hardcoded; now reads from the Write Options toggle (respects `init_codeplug` config field)
+
 ## [0.3.0] — 2026-03-04
 
 ### Added

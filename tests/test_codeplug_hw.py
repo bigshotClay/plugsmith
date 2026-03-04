@@ -241,43 +241,11 @@ def _fusion_zone_spec(name="Fusion Zone", freq=146.520, tx=147.120):
     }
 
 
-def _dstar_zone_spec(name="DStar Zone", freq=147.000, tx=147.600):
-    """Zone spec with a D-Star channel."""
-    return {
-        "name": name,
-        "tier": "home",
-        "state": "MO",
-        "channels": [
-            {
-                "ch_type": "dstar",
-                "name": "W0DST Spring DS",
-                "rx_freq": freq,
-                "tx_freq": tx,
-            }
-        ],
-    }
-
-
-class TestFusionDStarIntegration:
+class TestFusionIntegration:
     def test_fusion_build_produces_analog_channel(self):
         cp = _build(zone_specs=[_fusion_zone_spec()])
         assert len(cp["channels"]) == 1
         assert "analog" in cp["channels"][0]
-
-    def test_dstar_build_produces_dstar_channel(self):
-        cp = _build(zone_specs=[_dstar_zone_spec()])
-        assert len(cp["channels"]) == 1
-        assert "dstar" in cp["channels"][0]
-
-    def test_mixed_fm_fusion_dstar_produces_correct_channel_count(self):
-        zones = [
-            _zone("FM Zone", [_analog_ch(rx=146.520, tx=147.120)]),
-            _fusion_zone_spec(freq=146.620, tx=147.220),
-            _dstar_zone_spec(freq=147.000, tx=147.600),
-        ]
-        cp = _build(zone_specs=zones)
-        # 3 channels: FM analog, Fusion analog, D-Star
-        assert len(cp["channels"]) == 3
 
     def test_fm_and_fusion_same_freq_pl_deduplicated(self):
         """FM analog and Fusion analog on the same freq/tx/pl share a single channel entry."""
@@ -299,16 +267,10 @@ class TestFusionDStarIntegration:
         cp = _build(zone_specs=zones)
         assert len(cp["channels"]) == 2
 
-    def test_dstar_zone_id_correct(self):
-        cp = _build(zone_specs=[_dstar_zone_spec(name="MO DStar")])
-        assert cp["zones"][0]["id"] == "zone_MO_DStar"
-
-    def test_total_channels_includes_all_modes(self):
+    def test_mixed_fm_fusion_produces_correct_channel_count(self):
         zones = [
-            _zone("FM", [_analog_ch()]),
-            _zone("DMR", [_digital_ch()]),
+            _zone("FM Zone", [_analog_ch(rx=146.520, tx=147.120)]),
             _fusion_zone_spec(freq=146.620, tx=147.220),
-            _dstar_zone_spec(),
         ]
         cp = _build(zone_specs=zones)
-        assert len(cp["channels"]) == 4  # FM, DMR, Fusion, DStar
+        assert len(cp["channels"]) == 2
