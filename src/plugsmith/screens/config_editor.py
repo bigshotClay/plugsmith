@@ -13,11 +13,12 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Button, Collapsible, Input, Label, Select, SelectionList, Static, Switch
 
+from plugsmith.builder.build_config import LOWER_48_STATES
 from plugsmith.widgets.field_editors import LabeledInput, LabeledSwitch
 
 
 _STRATEGY_OPTIONS = [
-    ("tiered_region — All 50 states, home/adjacent/shallow depth (recommended)", "tiered_region"),
+    ("tiered_region — Home/adjacent/shallow tiers by distance (recommended)", "tiered_region"),
     ("state_band — MO 2m FM, MO 70cm FM per state", "state_band"),
     ("state_county — MO StLouis, MO Franklin per county", "state_county"),
     ("distance_rings — 0-25mi, 25-50mi distance rings", "distance_rings"),
@@ -103,6 +104,22 @@ class ConfigEditorPane(Widget):
                 yield Label("Coverage Tiers", classes="section-title")
                 yield LabeledInput("Home radius (mi):", "cfg-home-radius", placeholder="300")
                 yield LabeledInput("Adjacent radius (mi):", "cfg-adj-radius", placeholder="600")
+
+                # States
+                yield Label("States to Query", classes="section-title")
+                yield Label(
+                    "Select which states to fetch from RepeaterBook. Default: lower 48 contiguous states.",
+                    classes="note",
+                    markup=False,
+                )
+                yield SelectionList[str](
+                    *[(_label, val, val in LOWER_48_STATES) for _label, val in _US_STATE_OPTIONS],
+                    id="cfg-states",
+                )
+                with Horizontal(classes="btn-row"):
+                    yield Button("Lower 48", id="btn-states-lower48", variant="default")
+                    yield Button("All 50", id="btn-states-all", variant="default")
+                    yield Button("Clear", id="btn-states-clear", variant="default")
 
                 # Modes
                 yield Label("Modes", classes="section-title")
@@ -193,6 +210,17 @@ class ConfigEditorPane(Widget):
         _set("cfg-lon", s(loc.get("lon")))
         _set("cfg-home-state", s(cfg.get("home_state")))
 
+        selected = set(cfg.get("states") or LOWER_48_STATES)
+        try:
+            sl = self.query_one("#cfg-states", SelectionList)
+            for _label, val, *_ in _US_STATE_OPTIONS:
+                if val in selected:
+                    sl.select(val)
+                else:
+                    sl.deselect(val)
+        except Exception:
+            pass
+
         strategy = cfg.get("organization", {}).get("strategy", "tiered_region")
         try:
             self.query_one("#cfg-strategy", Select).value = strategy
@@ -274,6 +302,14 @@ class ConfigEditorPane(Widget):
         if hs:
             cfg["home_state"] = hs.upper()
 
+        try:
+            sl = self.query_one("#cfg-states", SelectionList)
+            sel = list(sl.selected)
+            if sel:
+                cfg["states"] = sorted(sel)
+        except Exception:
+            pass
+
         strategy = self.query_one("#cfg-strategy", Select).value
         if strategy and strategy != Select.BLANK:
             cfg.setdefault("organization", {})["strategy"] = strategy
@@ -332,6 +368,24 @@ class ConfigEditorPane(Widget):
         v = _opt_int(g("cfg-sha-max-dmr"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_dmr_freqs"] = v
+
+    @on(Button.Pressed, "#btn-states-lower48")
+    def _states_lower48(self) -> None:
+        sl = self.query_one("#cfg-states", SelectionList)
+        lower48 = set(LOWER_48_STATES)
+        for _label, val, *_ in _US_STATE_OPTIONS:
+            if val in lower48:
+                sl.select(val)
+            else:
+                sl.deselect(val)
+
+    @on(Button.Pressed, "#btn-states-all")
+    def _states_all(self) -> None:
+        self.query_one("#cfg-states", SelectionList).select_all()
+
+    @on(Button.Pressed, "#btn-states-clear")
+    def _states_clear(self) -> None:
+        self.query_one("#cfg-states", SelectionList).deselect_all()
 
     @on(Button.Pressed, "#btn-save-config")
     def _save_config(self) -> None:

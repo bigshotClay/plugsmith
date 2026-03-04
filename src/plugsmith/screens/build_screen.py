@@ -232,10 +232,14 @@ class BuildPane(Widget):
                 user_agent=user_agent,
             )
 
-            all_states = list(US_STATES.keys())
-            post_line(f"Fetching {len(all_states)} states…")
+            from plugsmith.builder.build_config import LOWER_48_STATES
+            selected_states = config.get("states") or LOWER_48_STATES
+            selected_states = [s for s in selected_states if s in US_STATES]
+            if not selected_states:
+                selected_states = list(LOWER_48_STATES)
+            post_line(f"Fetching {len(selected_states)} selected state(s)…")
             set_status("Fetching repeater data…")
-            raw_data = client.fetch_states(all_states)
+            raw_data = client.fetch_states(selected_states)
             post_line(f"Total raw entries: {len(raw_data)}")
 
             set_status("Parsing…")
@@ -267,8 +271,16 @@ class BuildPane(Widget):
             post_line("Classifying states into tiers…")
             state_tiers = classify_states(repeaters, ref_lat, ref_lon, home_r, adj_r)
 
-            from plugsmith.builder.zones import scale_config_to_radio
-            config = scale_config_to_radio(config, radio_profile, state_tiers)
+            from plugsmith.builder.zones import scale_config_to_radio, estimate_channels_uncapped
+            est = estimate_channels_uncapped(repeaters, state_tiers, config)
+            if est <= radio_profile.max_channels:
+                post_line(
+                    f"Estimated {est} channels ≤ {radio_profile.max_channels} limit"
+                    " — no scaling applied, using full data"
+                )
+            else:
+                post_line(f"Estimated {est} channels > {radio_profile.max_channels} limit — applying tier caps")
+                config = scale_config_to_radio(config, radio_profile, state_tiers)
 
             post_line("Building CTCSS and frequency maps…")
             ctcss_map = compute_state_ctcss_map(repeaters)

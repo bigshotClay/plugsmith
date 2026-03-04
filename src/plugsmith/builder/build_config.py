@@ -5,6 +5,14 @@ import os
 import yaml
 
 
+LOWER_48_STATES: list[str] = [
+    "AL", "AR", "AZ", "CA", "CO", "CT", "DE", "FL", "GA", "IA", "ID", "IL", "IN",
+    "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND",
+    "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD",
+    "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY",
+]
+
+
 DEFAULT_CONFIG: dict = {
     "dmr_id": 0,
     "callsign": "N0CALL",
@@ -14,7 +22,7 @@ DEFAULT_CONFIG: dict = {
         "lon": -91.1604,
     },
     "home_state": "MO",
-    "states": ["MO", "IL", "AR", "KS", "OK", "TN", "KY", "IN", "IA", "NE"],
+    "states": LOWER_48_STATES,
     "modes": {
         "fm": True,
         "dmr": True,

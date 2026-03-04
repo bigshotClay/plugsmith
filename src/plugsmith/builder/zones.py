@@ -288,6 +288,32 @@ def _add_zone_with_overflow(
         })
 
 
+def estimate_channels_uncapped(
+    repeaters: list[Repeater],
+    state_tiers: dict[str, str],
+    config: dict,
+) -> int:
+    """Upper-bound estimate of channels produced with no per-state caps.
+
+    Counts every FM repeater as 1 channel and every DMR repeater as
+    tgs_per_repeater channels.  Repeaters that support both modes are
+    counted for each.  Used to decide whether tier-based scaling is needed.
+    """
+    state_fm: dict[str, int] = defaultdict(int)
+    state_dmr: dict[str, int] = defaultdict(int)
+    for r in repeaters:
+        if r.state_abbr in state_tiers:
+            if r.is_fm:
+                state_fm[r.state_abbr] += 1
+            if r.is_dmr:
+                state_dmr[r.state_abbr] += 1
+    tgs = config.get("home_region", {}).get("dmr_talkgroups_per_repeater", 7)
+    simplex = len(config.get("simplex", {}).get("channels", []))
+    return simplex + sum(
+        state_fm[s] + state_dmr[s] * tgs for s in state_tiers
+    )
+
+
 def scale_config_to_radio(
     config: dict,
     radio_profile: "RadioProfile",
