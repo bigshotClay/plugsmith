@@ -14,6 +14,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Collapsible, Input, Label, Select, SelectionList, Static, Switch
 
 from plugsmith.builder.build_config import LOWER_48_STATES
+from plugsmith.builder.radio_settings_meta import ANYTONE_SETTINGS, SettingMeta
 from plugsmith.widgets.field_editors import LabeledInput, LabeledSwitch
 
 
@@ -68,6 +69,42 @@ class ConfigEditorPane(Widget):
     }
     ConfigEditorPane .btn-row Button {
         margin-right: 1;
+    }
+
+    /* Hardware setting entry rows */
+    ConfigEditorPane .hw-entry {
+        margin: 0 0 1 0;
+        padding: 0 0 0 1;
+        border-left: tall $primary-background-darken-2;
+    }
+    ConfigEditorPane .hw-row {
+        height: 3;
+        align: left middle;
+    }
+    ConfigEditorPane .hw-label {
+        width: 30;
+        padding: 1 1 1 0;
+        color: $text;
+        text-style: bold;
+    }
+    ConfigEditorPane .hw-control {
+        width: 1fr;
+    }
+    ConfigEditorPane .hw-desc {
+        color: $text-muted;
+        padding: 0 0 0 0;
+        margin: 0 0 0 0;
+    }
+    ConfigEditorPane .hw-preferred {
+        color: $success;
+        padding: 0 0 0 0;
+        margin: 0 0 0 0;
+    }
+    ConfigEditorPane .hw-warning {
+        color: $warning;
+        text-style: bold;
+        padding: 0 0 0 0;
+        margin: 0 0 0 0;
     }
     """
 
@@ -154,16 +191,120 @@ class ConfigEditorPane(Widget):
                     yield LabeledInput("Shallow max FM freqs:", "cfg-sha-max-fm", placeholder="10")
                     yield LabeledInput("Shallow max DMR freqs:", "cfg-sha-max-dmr", placeholder="3")
 
-                yield Static(
-                    "[dim]Note: [bold]anytone_settings[/bold] is not exposed here — "
-                    "edit config.yaml directly for radio hardware settings.[/dim]",
-                    classes="note",
-                    markup=True,
-                )
+                # Hardware settings — AnyTone only
+                with Collapsible(title="Radio Hardware Settings (AnyTone)", collapsed=True):
+                    yield Static(
+                        "[dim]These settings are written to the [bold]anytone_settings[/bold] block "
+                        "in config.yaml and apply to AT-D868UV, AT-D878UV, AT-D878UVII, and AT-D578UV. "
+                        "They control radio behavior, display, audio, and DMR parameters.[/dim]",
+                        classes="note",
+                        markup=True,
+                    )
+                    for display_name, group_key, settings in ANYTONE_SETTINGS:
+                        with Collapsible(title=display_name, collapsed=True):
+                            for meta in settings:
+                                yield from self._compose_hw_entry(group_key, meta)
 
                 with Horizontal(classes="btn-row"):
                     yield Button("Save Config", id="btn-save-config", variant="success")
                     yield Button("Reload from Disk", id="btn-reload-config", variant="default")
+
+    # ------------------------------------------------------------------
+    # Hardware settings helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _hw_widget_id(group_key: str, field_key: str) -> str:
+        return f"hw-{group_key}-{field_key}"
+
+    def _compose_hw_entry(self, group_key: str, meta: SettingMeta):
+        """Yield widgets for one hardware setting row with documentation."""
+        widget_id = self._hw_widget_id(group_key, meta.key)
+        with Vertical(classes="hw-entry"):
+            with Horizontal(classes="hw-row"):
+                yield Label(meta.label, classes="hw-label")
+                if meta.stype == "bool":
+                    yield Switch(
+                        value=bool(meta.default),
+                        id=widget_id,
+                        classes="hw-control",
+                    )
+                elif meta.stype == "enum" and meta.options:
+                    opts = [(v, v) for v in meta.options]
+                    yield Select(
+                        options=opts,
+                        value=str(meta.default) if meta.default is not None else Select.BLANK,
+                        id=widget_id,
+                        classes="hw-control",
+                    )
+                else:
+                    yield Input(
+                        value=str(meta.default) if meta.default is not None else "",
+                        id=widget_id,
+                        classes="hw-control",
+                    )
+            yield Static(meta.description, classes="hw-desc", markup=False)
+            yield Static(
+                f"Ham preferred: {meta.ham_preferred}",
+                classes="hw-preferred",
+                markup=False,
+            )
+            if meta.warning:
+                yield Static(
+                    f"\u26a0 {meta.warning}",
+                    classes="hw-warning",
+                    markup=False,
+                )
+
+    def _populate_hw_fields(self) -> None:
+        """Load anytone_settings from _raw_config into hw widgets."""
+        hw_block = self._raw_config.get("anytone_settings", {})
+        for _, group_key, settings in ANYTONE_SETTINGS:
+            group = hw_block.get(group_key, {})
+            for meta in settings:
+                widget_id = self._hw_widget_id(group_key, meta.key)
+                raw_val = group.get(meta.key, meta.default)
+                try:
+                    if meta.stype == "bool":
+                        self.query_one(f"#{widget_id}", Switch).value = bool(raw_val)
+                    elif meta.stype == "enum":
+                        sel = self.query_one(f"#{widget_id}", Select)
+                        sel.value = str(raw_val) if raw_val is not None else Select.BLANK
+                    else:
+                        self.query_one(f"#{widget_id}", Input).value = (
+                            str(raw_val) if raw_val is not None else ""
+                        )
+                except Exception:
+                    pass
+
+    def _collect_hw_fields(self) -> None:
+        """Write hw widget values back into _raw_config['anytone_settings']."""
+        hw_block = self._raw_config.setdefault("anytone_settings", {})
+        for _, group_key, settings in ANYTONE_SETTINGS:
+            group = hw_block.setdefault(group_key, {})
+            for meta in settings:
+                widget_id = self._hw_widget_id(group_key, meta.key)
+                try:
+                    if meta.stype == "bool":
+                        group[meta.key] = self.query_one(f"#{widget_id}", Switch).value
+                    elif meta.stype == "enum":
+                        val = self.query_one(f"#{widget_id}", Select).value
+                        if val and val != Select.BLANK:
+                            group[meta.key] = val
+                    elif meta.stype == "int":
+                        raw = self.query_one(f"#{widget_id}", Input).value.strip()
+                        try:
+                            group[meta.key] = int(raw)
+                        except ValueError:
+                            pass
+                    else:
+                        raw = self.query_one(f"#{widget_id}", Input).value.strip()
+                        if raw:
+                            group[meta.key] = raw
+                except Exception:
+                    pass
+
+    # ------------------------------------------------------------------
 
     def on_mount(self) -> None:
         from plugsmith.config import load_app_config
@@ -257,6 +398,8 @@ class ConfigEditorPane(Widget):
         sha_r = cfg.get("shallow_region", {})
         _set("cfg-sha-max-fm", s(sha_r.get("max_fm_freqs")))
         _set("cfg-sha-max-dmr", s(sha_r.get("max_dmr_freqs")))
+
+        self._populate_hw_fields()
 
     def _collect_fields(self) -> None:
         """Write form fields back into self._raw_config."""
@@ -368,6 +511,8 @@ class ConfigEditorPane(Widget):
         v = _opt_int(g("cfg-sha-max-dmr"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_dmr_freqs"] = v
+
+        self._collect_hw_fields()
 
     @on(Button.Pressed, "#btn-states-lower48")
     def _states_lower48(self) -> None:

@@ -2,6 +2,18 @@
 
 All notable changes to plugsmith will be documented here.
 
+## [0.5.0] — 2026-03-04
+
+### Added
+- **Radio Hardware Settings UI** — the Config tab now exposes all 75 AnyTone hardware settings in a collapsible "Radio Hardware Settings (AnyTone)" section
+  - Settings organized into 8 groups: Boot, Power Save, Programmable Keys, Tones & Alerts, Display, Audio, DMR, GPS
+  - Each setting shows description, ham-preferred value, and safety warnings where applicable
+  - Critical warnings for: encryption (FCC Part 97.113 violation on ham bands), P6 key encryption shortcut, boot password, cooling fan Off setting
+  - Widget type matches setting type: Switch (bool), Select (enum), Input (int/str)
+  - Values read from and written back to `config.yaml`'s `anytone_settings` block on save
+- `builder/radio_settings_meta.py` — new module with `SettingMeta` dataclass and `ANYTONE_SETTINGS` catalog (75 settings, 8 groups)
+- Full test coverage for all new and existing builder modules (100% for `builder/`)
+
 ## [0.4.0] — 2026-03-04
 
 ### Added

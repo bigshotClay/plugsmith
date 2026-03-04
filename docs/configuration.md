@@ -118,13 +118,32 @@ talkgroups:
 
 ### anytone_settings
 
-The `anytone_settings` block contains radio-specific hardware settings
-(boot display, key functions, audio, DMR timing, etc.). These are written
-directly to the `settings.anytone` block in codeplug.yaml.
+The `anytone_settings` block contains radio-specific hardware settings for
+AnyTone radios (boot display, programmable keys, audio, DMR timing, GPS, etc.).
+These are written directly to the `settings.anytone` block in codeplug.yaml.
 
-plugsmith's Config tab does **not** expose `anytone_settings` — edit
-`config.yaml` directly for these values. See the example config.yaml in
-the codeplug repo for all available fields.
+plugsmith's **Config tab exposes all AnyTone hardware settings** in a
+collapsible "Radio Hardware Settings (AnyTone)" section. Each setting shows:
+
+- **Description** — what the setting does
+- **Ham preferred** — the recommended value for amateur radio use
+- **Warning** — critical notes (e.g. encryption is prohibited on ham bands
+  under FCC Part 97.113; the P6 key shortcut enables it by default)
+
+The 75 settings are organized into 8 groups:
+
+| Group | Count | Examples |
+|-------|-------|---------|
+| Boot | 5 | Boot screen, password, reset |
+| Power Save | 4 | Screen timeout, cooling fan |
+| Programmable Keys | 14 | P1–P6 short/long press functions |
+| Tones & Alerts | 10 | DMR talk permit, TOT, ring tones |
+| Display | 16 | Brightness, theme, standby display |
+| Audio | 8 | Mic gain, monitor, speaker volume |
+| DMR | 12 | Pre-wave delay, SMS format, encryption, talker alias |
+| GPS | 5 | Interval, position reporting |
+
+You can also edit `config.yaml` directly for these values.
 
 ## Radio model keys
 

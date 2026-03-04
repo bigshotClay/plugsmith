@@ -406,3 +406,134 @@ class TestBuildRoamingZones:
         assert len(zones) == 1
         assert zones[0]["name"] == "Route Z"
         assert len(zones[0]["channels"]) >= 1
+
+    def test_budget_exhausted_post_line_called(self):
+        """Line 294: post_line is called when channel budget is exhausted mid-loop."""
+        from plugsmith.builder.roaming import build_roaming_zones
+        repeaters = [_make_repeater(38.0, -91.0 + i * 0.1, callsign=f"W{i:04d}") for i in range(5)]
+        defs = [
+            {"name": "Zone A", "mode": "radius", "center": "38.0,-91.0", "radius_miles": 999},
+            {"name": "Zone B", "mode": "radius", "center": "38.0,-91.0", "radius_miles": 999},
+        ]
+        messages: list[str] = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_roaming_zones(
+                defs, repeaters, tmpdir, 160, budget := 2, "test/1.0",
+                post_line=lambda msg, is_err=False: messages.append(msg),
+            )
+
+        assert any("budget" in m.lower() or "exhausted" in m.lower() for m in messages)
+
+    def test_route_zone_insufficient_waypoints_skipped(self):
+        """Line 311: Route zone with < 2 waypoints raises ValueError → skipped."""
+        from plugsmith.builder.roaming import build_roaming_zones
+        defs = [
+            {"name": "Bad Route", "mode": "route", "waypoints": ["41.85,-87.65"]},  # only 1 wp
+            {"name": "Good Zone", "mode": "radius", "center": "38.0,-91.0", "radius_miles": 50},
+        ]
+        repeaters = [_make_repeater(38.0, -91.0)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zones = build_roaming_zones(defs, repeaters, tmpdir, 160, 1000, "test/1.0")
+
+        assert len(zones) == 1
+        assert zones[0]["name"] == "Good Zone"
+
+    def test_route_zone_post_line_called(self):
+        """Line 318: post_line is called before fetching route waypoints."""
+        from plugsmith.builder.roaming import build_roaming_zones
+        defs = [{
+            "name": "Route Z",
+            "mode": "route",
+            "waypoints": ["41.85,-87.65", "38.62,-90.19"],
+            "corridor_miles": 500,
+        }]
+        repeaters = [_make_repeater(40.0, -88.5, callsign="W0MID")]
+        osrm_coords = [[-87.65, 41.85], [-88.50, 40.00], [-90.19, 38.62]]
+        mock_resp = _mock_osrm(osrm_coords)
+        messages: list[str] = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch("plugsmith.builder.roaming.requests.get", return_value=mock_resp):
+                build_roaming_zones(
+                    defs, repeaters, tmpdir, 160, 1000, "test/1.0",
+                    post_line=lambda msg, is_err=False: messages.append(msg),
+                )
+
+        assert any("Route Z" in m and "waypoints" in m.lower() for m in messages)
+
+    def test_radius_zone_missing_center_skipped(self):
+        """Line 326: Radius zone without 'center' raises ValueError → skipped."""
+        from plugsmith.builder.roaming import build_roaming_zones
+        defs = [
+            {"name": "No Center", "mode": "radius", "radius_miles": 50},  # missing center
+            {"name": "Good Zone", "mode": "radius", "center": "38.0,-91.0", "radius_miles": 50},
+        ]
+        repeaters = [_make_repeater(38.0, -91.0)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zones = build_roaming_zones(defs, repeaters, tmpdir, 160, 1000, "test/1.0")
+
+        assert len(zones) == 1
+        assert zones[0]["name"] == "Good Zone"
+
+    def test_unknown_mode_skipped(self):
+        """Line 342: Zone with unknown mode raises ValueError → skipped."""
+        from plugsmith.builder.roaming import build_roaming_zones
+        defs = [
+            {"name": "Bad Mode", "mode": "teleport", "center": "38.0,-91.0"},
+            {"name": "Good Zone", "mode": "radius", "center": "38.0,-91.0", "radius_miles": 50},
+        ]
+        repeaters = [_make_repeater(38.0, -91.0)]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zones = build_roaming_zones(defs, repeaters, tmpdir, 160, 1000, "test/1.0")
+
+        assert len(zones) == 1
+        assert zones[0]["name"] == "Good Zone"
+
+
+# ---------------------------------------------------------------------------
+# _load_json_cache — corrupt file (lines 44-45)
+# ---------------------------------------------------------------------------
+
+
+class TestLoadJsonCacheCorrupt:
+    def test_corrupt_geocode_cache_falls_through(self):
+        """Lines 44-45: _load_json_cache exception on corrupt JSON returns {} silently."""
+        from plugsmith.builder.roaming import geocode_location
+
+        mock_resp = _mock_nominatim("38.20", "-91.16")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Write a corrupt geocode cache file
+            cache_path = os.path.join(tmpdir, "geocode_cache.json")
+            with open(cache_path, "w") as f:
+                f.write("NOT VALID JSON {{{{")
+            # geocode_location should silently ignore corrupt cache and call nominatim
+            with patch("plugsmith.builder.roaming.requests.get", return_value=mock_resp) as mock_get:
+                lat, lon = geocode_location("Sullivan, MO", tmpdir, "test/1.0")
+            assert mock_get.called
+        assert lat == pytest.approx(38.20)
+
+    def test_corrupt_route_cache_falls_through(self):
+        """Lines 149-150: fetch_route_waypoints exception on corrupt route cache falls back."""
+        import hashlib
+        from plugsmith.builder.roaming import fetch_route_waypoints
+
+        start = (41.85, -87.65)
+        end = (38.62, -90.19)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Compute cache key exactly as roaming.py does
+            slat, slon = start
+            elat, elon = end
+            cache_key_str = f"{slat:.4f},{slon:.4f}-{elat:.4f},{elon:.4f}"
+            hash8 = hashlib.sha256(cache_key_str.encode()).hexdigest()[:8]
+            cache_path = os.path.join(tmpdir, f"route_{hash8}.json")
+            with open(cache_path, "w") as f:
+                f.write("NOT VALID JSON {{{{")
+
+            osrm_coords = [[-87.65, 41.85], [-90.19, 38.62]]
+            mock_resp = _mock_osrm(osrm_coords)
+            with patch("plugsmith.builder.roaming.requests.get", return_value=mock_resp):
+                wps = fetch_route_waypoints(start, end, tmpdir, "test/1.0")
+
+        assert len(wps) >= 2

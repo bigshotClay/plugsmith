@@ -13,8 +13,8 @@ log = logging.getLogger(__name__)
 try:
     from geopy.distance import geodesic as _geodesic
     _HAS_GEOPY = True
-except ImportError:
-    _HAS_GEOPY = False
+except ImportError:  # pragma: no cover
+    _HAS_GEOPY = False  # pragma: no cover
 
 
 def _state_name_to_abbr(name: str) -> str:

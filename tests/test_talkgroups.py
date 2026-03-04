@@ -2,9 +2,12 @@
 
 import base64
 import json
+import os
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import requests
 
 import pytest
 
@@ -635,3 +638,310 @@ class TestBuildConfigDefaults:
         config = load_config(str(cfg_file))
         assert "talkgroups" in config
         assert config["talkgroups"]["fill_contacts"] is True
+
+
+# ---------------------------------------------------------------------------
+# TalkgroupClient — _notify with progress_callback (line 133)
+# ---------------------------------------------------------------------------
+
+
+class TestTalkgroupClientNotify:
+    def test_notify_called_with_progress_callback(self, tmp_path):
+        """Line 133: _notify calls progress_callback when set."""
+        calls = []
+        cache_file = tmp_path / "tg_brandmeister.json"
+        cache_file.write_text(json.dumps([{"id": 9, "name": "Local"}]))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(
+                cache_dir=str(tmp_path),
+                rate_limit=0,
+                progress_callback=lambda msg, cached: calls.append((msg, cached)),
+            )
+            client.fetch_registry(networks=["brandmeister"])
+
+        assert any("BrandMeister" in msg for msg, _ in calls)
+
+
+# ---------------------------------------------------------------------------
+# TalkgroupClient — BrandMeister error handling (lines 153-160, 173-174)
+# ---------------------------------------------------------------------------
+
+
+class TestTalkgroupClientBrandMeisterErrors:
+    def test_request_exception_no_cache_returns_empty(self, tmp_path):
+        """Lines 153-160: BrandMeister fetch exception with no cache returns empty registry."""
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["brandmeister"])
+
+        assert len(reg) == 0
+
+    def test_request_exception_stale_cache_returns_data(self, tmp_path):
+        """Lines 153-160: BrandMeister fetch exception with stale cache returns stale data."""
+        stale_data = [{"id": 9, "name": "Local"}]
+        cache_file = tmp_path / "tg_brandmeister.json"
+        cache_file.write_text(json.dumps(stale_data))
+        old_time = time.time() - (800 * 3600)  # 800 hours > 168h cache max age
+        os.utime(cache_file, (old_time, old_time))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["brandmeister"])
+
+        assert 9 in reg
+
+    def test_malformed_item_skipped(self, tmp_path):
+        """Lines 173-174: BrandMeister malformed item (bad id) causes ValueError → skipped."""
+        raw = [{"id": "NOT-AN-INT"}, {"id": 9, "name": "Local"}]
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["brandmeister"])
+
+        assert 9 in reg
+
+
+# ---------------------------------------------------------------------------
+# TalkgroupClient — TGIF error handling (lines 194-201, 209, 214-215, 220-221)
+# ---------------------------------------------------------------------------
+
+
+class TestTalkgroupClientTGIFErrors:
+    def test_request_exception_no_cache_returns_empty(self, tmp_path):
+        """Lines 194-201: TGIF fetch exception with no cache returns empty registry."""
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["tgif"])
+
+        assert len(reg) == 0
+
+    def test_request_exception_stale_cache_returns_data(self, tmp_path):
+        """Lines 194-201: TGIF fetch exception with stale cache returns stale data."""
+        stale_data = [{"id": "91", "name": "WW", "description": ""}]
+        cache_file = tmp_path / "tg_tgif.json"
+        cache_file.write_text(json.dumps(stale_data))
+        old_time = time.time() - (800 * 3600)  # 800 hours > 168h cache max age
+        os.utime(cache_file, (old_time, old_time))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["tgif"])
+
+        assert 91 in reg
+
+    def test_zero_tg_id_skipped(self, tmp_path):
+        """Line 209: TGIF item with tg_id <= 0 is skipped."""
+        raw = [{"id": "0", "name": "Bad"}, {"id": "91", "name": "WW", "description": ""}]
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["tgif"])
+
+        assert 0 not in reg
+        assert 91 in reg
+
+    def test_bad_base64_handled_gracefully(self, tmp_path):
+        """Lines 214-215: TGIF None description causes TypeError → desc='', item still added."""
+        raw = [{"id": "91", "name": "WW", "description": None}]
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["tgif"])
+
+        assert 91 in reg
+
+    def test_malformed_item_skipped(self, tmp_path):
+        """Lines 220-221: TGIF malformed item (bad id) causes ValueError → skipped."""
+        raw = [{"id": "NOT-AN-INT"}, {"id": "91", "name": "WW", "description": ""}]
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["tgif"])
+
+        assert 91 in reg
+
+
+# ---------------------------------------------------------------------------
+# TalkgroupClient — fetch_registry default networks (line 234)
+# ---------------------------------------------------------------------------
+
+
+class TestFetchRegistryDefaultNetworks:
+    def test_default_networks_fetches_both(self, tmp_path):
+        """Line 234: fetch_registry(networks=None) defaults to ['brandmeister', 'tgif']."""
+        bm_data = [{"id": 9, "name": "Local"}]
+        tgif_data = [{"id": "91", "name": "WW", "description": ""}]
+        (tmp_path / "tg_brandmeister.json").write_text(json.dumps(bm_data))
+        (tmp_path / "tg_tgif.json").write_text(json.dumps(tgif_data))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.headers = {}
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry()  # networks=None → default
+
+        assert 9 in reg
+        assert 91 in reg
+
+
+# ---------------------------------------------------------------------------
+# RadioIDClient — error handling (lines 301, 338-345, 351, 373)
+# ---------------------------------------------------------------------------
+
+
+class TestRadioIDClientErrors:
+    def test_notify_with_progress_callback(self, tmp_path):
+        """Line 301: RadioIDClient._notify calls progress_callback when set."""
+        calls = []
+        cache_file = tmp_path / "radioid_MO.json"
+        cache_file.write_text(json.dumps({"count": 0, "results": []}))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.headers = {}
+            client = RadioIDClient(
+                cache_dir=str(tmp_path),
+                rate_limit=0,
+                progress_callback=lambda msg, cached: calls.append((msg, cached)),
+            )
+            client.fetch_repeater_tgs("MO")
+
+        assert any("MO" in msg for msg, _ in calls)
+
+    def test_request_exception_no_cache_returns_empty(self, tmp_path):
+        """Lines 338-345: RadioID fetch exception with no cache returns {}."""
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = RadioIDClient(cache_dir=str(tmp_path), rate_limit=0)
+            result = client.fetch_repeater_tgs("MO")
+
+        assert result == {}
+
+    def test_request_exception_stale_cache_returns_data(self, tmp_path):
+        """Lines 338-345: RadioID fetch exception with stale cache returns stale data."""
+        stale_data = {
+            "count": 1,
+            "results": [{"callsign": "W0OLD", "ts1_static_talkgroups": [9], "ts2_static_talkgroups": []}],
+        }
+        cache_file = tmp_path / "radioid_MO.json"
+        cache_file.write_text(json.dumps(stale_data))
+        old_time = time.time() - (800 * 3600)  # 800 hours > 168h cache max age
+        os.utime(cache_file, (old_time, old_time))
+
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.get.side_effect = requests.RequestException("timeout")
+            MockSession.return_value.headers = {}
+            client = RadioIDClient(cache_dir=str(tmp_path), rate_limit=0)
+            result = client.fetch_repeater_tgs("MO")
+
+        assert "W0OLD" in result
+
+    def test_empty_callsign_entry_skipped(self, tmp_path):
+        """Line 351: RadioID entry with empty callsign is skipped."""
+        raw = {
+            "count": 2,
+            "results": [
+                {"callsign": "", "ts1_static_talkgroups": [9], "ts2_static_talkgroups": []},
+                {"callsign": "W0ABC", "ts1_static_talkgroups": [9], "ts2_static_talkgroups": []},
+            ],
+        }
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+            client = RadioIDClient(cache_dir=str(tmp_path), rate_limit=0)
+            result = client.fetch_repeater_tgs("MO")
+
+        assert "" not in result
+        assert "W0ABC" in result
+
+    def test_clear_cache_missing_file_returns_zero(self, tmp_path):
+        """Line 373: clear_cache for state with no file returns 0."""
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            MockSession.return_value.headers = {}
+            client = RadioIDClient(cache_dir=str(tmp_path))
+            count = client.clear_cache("MO")
+
+        assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# models.py — Talkgroup __post_init__ (lines 71-72)
+# ---------------------------------------------------------------------------
+
+
+class TestTalkgroupModel:
+    def test_post_init_sets_number_from_tg_id(self):
+        """Lines 71-72: __post_init__ sets number=tg_id when number defaults to 0."""
+        from plugsmith.builder.models import Talkgroup
+
+        tg = Talkgroup(tg_id=9, name="Local")
+        assert tg.number == 9
+
+    def test_post_init_preserves_explicit_number(self):
+        """__post_init__ does not overwrite an explicitly set non-zero number."""
+        from plugsmith.builder.models import Talkgroup
+
+        tg = Talkgroup(tg_id=9, name="Local", number=42)
+        assert tg.number == 42
+
+
+# ---------------------------------------------------------------------------
+# build_config.py — _deep_merge recursive and write_default_config (lines 118, 142-150)
+# ---------------------------------------------------------------------------
+
+
+class TestBuildConfigExtras:
+    def test_deep_merge_recursive_nested_dict(self):
+        """Line 118: _deep_merge recursively merges nested dicts."""
+        from plugsmith.builder.build_config import _deep_merge
+
+        base = {"a": {"x": 1, "y": 2}, "b": 3}
+        override = {"a": {"y": 99, "z": 100}}
+        _deep_merge(base, override)
+        assert base["a"]["x"] == 1    # preserved
+        assert base["a"]["y"] == 99   # overridden
+        assert base["a"]["z"] == 100  # added
+        assert base["b"] == 3         # untouched
+
+    def test_write_default_config_creates_file(self, tmp_path):
+        """Lines 142-150: write_default_config creates a valid YAML file."""
+        from plugsmith.builder.build_config import write_default_config
+        import yaml
+
+        path = str(tmp_path / "config.yaml")
+        write_default_config(path)
+        assert os.path.exists(path)
+        with open(path) as f:
+            content = f.read()
+        assert "Codeplug Builder" in content
+        data = yaml.safe_load(content)
+        assert "dmr_id" in data
+        assert "anytone_settings" not in data  # excluded from user config

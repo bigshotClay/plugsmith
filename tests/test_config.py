@@ -120,3 +120,59 @@ def test_backup_dir_path_relative_to_config():
         backup_dir="backups",
     )
     assert cfg.backup_dir_path == Path("/home/user/ham/backups")
+
+
+def test_backup_dir_path_relative_no_config():
+    """Relative backup_dir with no codeplug_config returns bare relative path."""
+    cfg = PlugsmithConfig(backup_dir="backups")
+    assert cfg.backup_dir_path == Path("backups")
+
+
+# ---------------------------------------------------------------------------
+# codeplug_config_path property
+# ---------------------------------------------------------------------------
+
+
+def test_codeplug_config_path_returns_none_when_unset():
+    cfg = PlugsmithConfig()
+    assert cfg.codeplug_config_path is None
+
+
+def test_codeplug_config_path_returns_path_when_set():
+    cfg = PlugsmithConfig(codeplug_config="/home/user/ham/config.yaml")
+    assert cfg.codeplug_config_path == Path("/home/user/ham/config.yaml")
+
+
+# ---------------------------------------------------------------------------
+# codeplug_yaml_path fallback when neither is set
+# ---------------------------------------------------------------------------
+
+
+def test_codeplug_yaml_path_bare_fallback():
+    """When neither codeplug_yaml nor codeplug_config is set, returns bare codeplug.yaml."""
+    cfg = PlugsmithConfig()
+    assert cfg.codeplug_yaml_path == Path("codeplug.yaml")
+
+
+# ---------------------------------------------------------------------------
+# load_app_config edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_load_app_config_returns_defaults_when_file_missing(tmp_path, monkeypatch):
+    """load_app_config returns default PlugsmithConfig when config file doesn't exist."""
+    monkeypatch.setattr("plugsmith.config.CONFIG_FILE", tmp_path / "nonexistent.toml")
+    cfg = load_app_config()
+    assert isinstance(cfg, PlugsmithConfig)
+    assert cfg.device == ""
+    assert cfg.radio_model == ""
+
+
+def test_load_app_config_returns_defaults_on_corrupt_file(tmp_path, monkeypatch):
+    """load_app_config returns default PlugsmithConfig when file is corrupt."""
+    cfg_file = tmp_path / "corrupt.toml"
+    cfg_file.write_bytes(b"\xff\xfe invalid toml content %%@@")
+    monkeypatch.setattr("plugsmith.config.CONFIG_FILE", cfg_file)
+    cfg = load_app_config()
+    assert isinstance(cfg, PlugsmithConfig)
+    assert cfg.device == ""
