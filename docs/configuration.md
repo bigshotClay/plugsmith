@@ -160,3 +160,31 @@ Common dmrconf radio keys (first column in `dmrconf --list-radios`):
 | `gd77` | Radioddity GD-77 | FM, DMR |
 
 > **Note:** Yaesu System Fusion and Icom D-STAR radios are not supported by dmrconf and cannot be programmed via plugsmith. This is a limitation of dmrconf, not plugsmith.
+
+
+## Device-Specific Hardware Settings
+
+Plugsmith supports device-specific hardware configuration blocks in `config.yaml`. For AnyTone
+radios (AT-D868UV, AT-D878UV, AT-D878UVII, AT-D578UV), rich metadata is provided including
+descriptions, recommended values, and compliance warnings.
+
+For other radios, add a `{model_key}_settings` block to your config.yaml:
+
+```yaml
+# Example for a TYT MD-380 (model key: md380)
+md380_settings:
+  displaySettings:
+    contrast: 5
+    backlight: Auto
+  audioSettings:
+    micGain: 3
+    volume: 8
+```
+
+Plugsmith will auto-detect this block when you open the Config tab and generate an editable
+form based on the structure. You can also import settings from an existing codeplug YAML using
+the "Import Settings from YAML…" button in the Config tab.
+
+The settings block is preserved in config.yaml as-is; types are inferred from existing values
+(bool, int, float, string). Values round-trip correctly — integers stay integers, booleans
+stay booleans.

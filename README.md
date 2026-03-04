@@ -28,6 +28,7 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **Cross-platform** — macOS, Linux, Windows (WSL)
 - **Multi-mode support** — FM and DMR stable; System Fusion repeaters included as FM-analog channels on all radios; P-25, NXDN, M17, Tetra scaffolded
 - **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Baofeng, and more
+- **Generic hardware config editor** — auto-generates an editable form from any `{model}_settings` YAML block for unsupported radios
 
 ## Requirements
 
