@@ -125,6 +125,34 @@ class ConfigEditorPane(Widget):
     ConfigEditorPane .btn-row Button {
         margin-right: 1;
     }
+    ConfigEditorPane .simplex-row {
+        height: 3;
+        margin-bottom: 1;
+        align: left middle;
+    }
+    ConfigEditorPane .simplex-row Input {
+        width: 1fr;
+        margin-right: 1;
+    }
+    ConfigEditorPane .simplex-row Button {
+        width: 5;
+    }
+    ConfigEditorPane .state-tg-row {
+        height: 3;
+        margin-bottom: 1;
+        align: left middle;
+    }
+    ConfigEditorPane .state-tg-row Select {
+        width: 1fr;
+        margin-right: 1;
+    }
+    ConfigEditorPane .state-tg-row Input {
+        width: 12;
+        margin-right: 1;
+    }
+    ConfigEditorPane .state-tg-row Button {
+        width: 5;
+    }
 
     /* Hardware setting entry rows */
     ConfigEditorPane .hw-entry {
@@ -172,6 +200,8 @@ class ConfigEditorPane(Widget):
     _raw_config: dict = {}
     _hw_mode: str = ""  # "anytone" | "generic" | "none"
     _generic_settings_key: str = ""
+    _simplex_counter: int = 0
+    _state_tg_counter: int = 0
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -224,6 +254,11 @@ class ConfigEditorPane(Widget):
                 yield Label("Modes", classes="section-title")
                 yield LabeledSwitch("FM analog:", "cfg-mode-fm", value=True)
                 yield LabeledSwitch("DMR digital:", "cfg-mode-dmr", value=True)
+                yield LabeledSwitch("System Fusion:", "cfg-mode-fusion", value=False)
+                yield LabeledSwitch("NXDN:", "cfg-mode-nxdn", value=False)
+                yield LabeledSwitch("P25:", "cfg-mode-p25", value=False)
+                yield LabeledSwitch("M17:", "cfg-mode-m17", value=False)
+                yield LabeledSwitch("TETRA:", "cfg-mode-tetra", value=False)
 
                 # Filters
                 yield Label("Filters", classes="section-title")
@@ -237,9 +272,42 @@ class ConfigEditorPane(Widget):
                     id="cfg-bands",
                 )
 
+                # Talkgroup Settings
+                yield Label("Talkgroup Settings", classes="section-title")
+                yield Label("Networks to fetch talkgroup data from:", classes="note", markup=False)
+                yield SelectionList[str](
+                    ("BrandMeister", "brandmeister", True),
+                    ("TGIF", "tgif", True),
+                    id="cfg-tg-networks",
+                )
+                yield LabeledSwitch("Fill contact list:", "cfg-tg-fill-contacts", value=True)
+                yield LabeledSwitch("Per-repeater RadioID lookup:", "cfg-tg-per-repeater", value=True)
+
+                # Simplex Channels
+                yield Label("Simplex Channels", classes="section-title")
+                yield Label(
+                    "Predefined simplex/calling channels added to every codeplug.",
+                    classes="note",
+                    markup=False,
+                )
+                yield Vertical(id="simplex-rows")
+                yield Button("+ Add Channel", id="btn-add-simplex", variant="default")
+
+                # State Talkgroup Overrides
+                yield Label("State Talkgroup Overrides", classes="section-title")
+                yield Label(
+                    "Override the default BrandMeister state TG ID for a specific state. "
+                    "Leave empty to use built-in defaults.",
+                    classes="note",
+                    markup=False,
+                )
+                yield Vertical(id="state-tg-rows")
+                yield Button("+ Add Override", id="btn-add-state-tg", variant="default")
+
                 # Output
                 yield Label("Output", classes="section-title")
                 yield LabeledInput("qdmr YAML:", "cfg-qdmr-yaml", placeholder="codeplug.yaml")
+                yield LabeledInput("Anytone CSV dir:", "cfg-csv-dir", placeholder="anytone_csv")
                 yield LabeledInput("Summary file:", "cfg-summary", placeholder="codeplug_summary.txt")
                 yield LabeledInput("Cache dir:", "cfg-cache-dir", placeholder=".rb_cache")
 
@@ -248,10 +316,15 @@ class ConfigEditorPane(Widget):
                     yield LabeledInput("Rate limit (sec):", "cfg-rate-limit", placeholder="5.0")
                     yield LabeledInput("Home max FM/state:", "cfg-home-max-fm", placeholder="(no cap)")
                     yield LabeledInput("Home max DMR/state:", "cfg-home-max-dmr", placeholder="(no cap)")
+                    yield LabeledInput("Home TGs/repeater:", "cfg-home-tgs-per-rep", placeholder="7")
+                    yield LabeledInput("Home max Fusion/state:", "cfg-home-max-fusion", placeholder="(no cap)")
                     yield LabeledInput("Adjacent max FM/state:", "cfg-adj-max-fm", placeholder="30")
                     yield LabeledInput("Adjacent max DMR freqs:", "cfg-adj-max-dmr", placeholder="5")
+                    yield LabeledInput("Adj TGs/freq:", "cfg-adj-tgs-per-freq", placeholder="3")
+                    yield LabeledInput("Adj max Fusion/state:", "cfg-adj-max-fusion", placeholder="10")
                     yield LabeledInput("Shallow max FM freqs:", "cfg-sha-max-fm", placeholder="10")
                     yield LabeledInput("Shallow max DMR freqs:", "cfg-sha-max-dmr", placeholder="3")
+                    yield LabeledInput("Shallow max Fusion:", "cfg-sha-max-fusion", placeholder="3")
 
                 # Hardware settings — dynamically populated after load
                 yield Vertical(id="hw-section-outer")
@@ -259,6 +332,145 @@ class ConfigEditorPane(Widget):
                 with Horizontal(classes="btn-row"):
                     yield Button("Save Config", id="btn-save-config", variant="success")
                     yield Button("Reload from Disk", id="btn-reload-config", variant="default")
+
+    # ------------------------------------------------------------------
+    # Simplex channel helpers
+    # ------------------------------------------------------------------
+
+    def _add_simplex_row(self, name: str = "", freq: str = "") -> None:
+        self._simplex_counter += 1
+        n = self._simplex_counter
+        try:
+            self.query_one("#simplex-rows", Vertical).mount(
+                Horizontal(
+                    Input(value=name, placeholder="Name", id=f"simplex-name-{n}"),
+                    Input(value=freq, placeholder="Freq (MHz)", id=f"simplex-freq-{n}"),
+                    Button("✕", id=f"simplex-del-{n}", variant="error"),
+                    classes="simplex-row",
+                    id=f"simplex-row-{n}",
+                )
+            )
+        except Exception:
+            pass
+
+    def _populate_simplex(self) -> None:
+        channels = list(self._raw_config.get("simplex", {}).get("channels", []))
+
+        def _do_mount() -> None:
+            try:
+                container = self.query_one("#simplex-rows", Vertical)
+                container.remove_children()
+                self._simplex_counter = 0
+                for ch in channels:
+                    self._add_simplex_row(
+                        name=str(ch.get("name", "")),
+                        freq=str(ch.get("freq", "")),
+                    )
+            except Exception:
+                pass
+
+        self.call_after_refresh(_do_mount)
+
+    def _collect_simplex(self) -> None:
+        channels = []
+        for n in range(1, self._simplex_counter + 1):
+            try:
+                name = self.query_one(f"#simplex-name-{n}", Input).value.strip()
+                freq_s = self.query_one(f"#simplex-freq-{n}", Input).value.strip()
+            except Exception:
+                continue  # row was deleted
+            if name or freq_s:
+                try:
+                    freq_v: float | str = float(freq_s)
+                except ValueError:
+                    freq_v = freq_s
+                channels.append({"name": name, "freq": freq_v})
+        if channels:
+            self._raw_config.setdefault("simplex", {})["channels"] = channels
+        elif "simplex" in self._raw_config:
+            self._raw_config["simplex"].pop("channels", None)
+
+    @on(Button.Pressed, "#btn-add-simplex")
+    def _add_simplex(self) -> None:
+        self._add_simplex_row()
+
+    # ------------------------------------------------------------------
+    # State talkgroup override helpers
+    # ------------------------------------------------------------------
+
+    def _add_state_tg_row(self, state: str = "", tg_id: str = "") -> None:
+        self._state_tg_counter += 1
+        n = self._state_tg_counter
+        try:
+            self.query_one("#state-tg-rows", Vertical).mount(
+                Horizontal(
+                    Select(
+                        options=_US_STATE_OPTIONS,
+                        value=state if state else Select.BLANK,
+                        id=f"state-tg-state-{n}",
+                        prompt="State…",
+                    ),
+                    Input(value=tg_id, placeholder="TG ID", id=f"state-tg-id-{n}"),
+                    Button("✕", id=f"state-tg-del-{n}", variant="error"),
+                    classes="state-tg-row",
+                    id=f"state-tg-row-{n}",
+                )
+            )
+        except Exception:
+            pass
+
+    def _populate_state_tgs(self) -> None:
+        overrides = dict(self._raw_config.get("state_talkgroups", {}))
+
+        def _do_mount() -> None:
+            try:
+                container = self.query_one("#state-tg-rows", Vertical)
+                container.remove_children()
+                self._state_tg_counter = 0
+                for state, tg_id in overrides.items():
+                    self._add_state_tg_row(state=str(state), tg_id=str(tg_id))
+            except Exception:
+                pass
+
+        self.call_after_refresh(_do_mount)
+
+    def _collect_state_tgs(self) -> None:
+        overrides: dict[str, int] = {}
+        for i in range(1, self._state_tg_counter + 1):
+            try:
+                state_val = self.query_one(f"#state-tg-state-{i}", Select).value
+                tg_id_s = self.query_one(f"#state-tg-id-{i}", Input).value.strip()
+            except Exception:
+                continue
+            if state_val and state_val != Select.BLANK and tg_id_s.isdigit():
+                overrides[str(state_val)] = int(tg_id_s)
+        if overrides:
+            self._raw_config["state_talkgroups"] = overrides
+        elif "state_talkgroups" in self._raw_config:
+            del self._raw_config["state_talkgroups"]
+
+    @on(Button.Pressed, "#btn-add-state-tg")
+    def _add_state_tg(self) -> None:
+        self._add_state_tg_row()
+
+    @on(Button.Pressed)
+    def _maybe_del_row(self, event: Button.Pressed) -> None:
+        """Handle delete buttons for both simplex and state-tg dynamic rows."""
+        btn_id = event.button.id or ""
+        if btn_id.startswith("simplex-del-"):
+            n = btn_id.removeprefix("simplex-del-")
+            try:
+                self.query_one(f"#simplex-row-{n}").remove()
+            except Exception:
+                pass
+            event.stop()
+        elif btn_id.startswith("state-tg-del-"):
+            n = btn_id.removeprefix("state-tg-del-")
+            try:
+                self.query_one(f"#state-tg-row-{n}").remove()
+            except Exception:
+                pass
+            event.stop()
 
     # ------------------------------------------------------------------
     # Hardware settings helpers
@@ -436,6 +648,11 @@ class ConfigEditorPane(Widget):
         modes = cfg.get("modes", {})
         _set_sw("cfg-mode-fm", bool(modes.get("fm", True)))
         _set_sw("cfg-mode-dmr", bool(modes.get("dmr", True)))
+        _set_sw("cfg-mode-fusion", bool(modes.get("fusion", False)))
+        _set_sw("cfg-mode-nxdn", bool(modes.get("nxdn", False)))
+        _set_sw("cfg-mode-p25", bool(modes.get("p25", False)))
+        _set_sw("cfg-mode-m17", bool(modes.get("m17", False)))
+        _set_sw("cfg-mode-tetra", bool(modes.get("tetra", False)))
 
         filt = cfg.get("filters", {})
         _set_sw("cfg-open-only", bool(filt.get("open_only", True)))
@@ -443,22 +660,46 @@ class ConfigEditorPane(Widget):
 
         out = cfg.get("output", {})
         _set("cfg-qdmr-yaml", s(out.get("qdmr_yaml")))
+        _set("cfg-csv-dir", s(out.get("anytone_csv_dir")))
         _set("cfg-summary", s(out.get("summary")))
         _set("cfg-cache-dir", s(cfg.get("cache_dir")))
+
+        # Talkgroup settings
+        tg = cfg.get("talkgroups", {})
+        networks = tg.get("networks", ["brandmeister", "tgif"])
+        try:
+            sl_tg = self.query_one("#cfg-tg-networks", SelectionList)
+            for net in ("brandmeister", "tgif"):
+                if net in networks:
+                    sl_tg.select(net)
+                else:
+                    sl_tg.deselect(net)
+        except Exception:
+            pass
+        _set_sw("cfg-tg-fill-contacts", bool(tg.get("fill_contacts", True)))
+        _set_sw("cfg-tg-per-repeater", bool(tg.get("per_repeater_lookup", True)))
+
+        self._populate_simplex()
+        self._populate_state_tgs()
 
         _set("cfg-rate-limit", s(cfg.get("rate_limit_seconds")))
 
         home_r = cfg.get("home_region", {})
         _set("cfg-home-max-fm", s(home_r.get("max_fm_per_state")))
         _set("cfg-home-max-dmr", s(home_r.get("max_dmr_per_state")))
+        _set("cfg-home-tgs-per-rep", s(home_r.get("dmr_talkgroups_per_repeater")))
+        _set("cfg-home-max-fusion", s(home_r.get("max_fusion_per_state")))
 
         adj_r = cfg.get("adjacent_region", {})
         _set("cfg-adj-max-fm", s(adj_r.get("max_fm_per_state")))
         _set("cfg-adj-max-dmr", s(adj_r.get("max_dmr_freqs_per_state")))
+        _set("cfg-adj-tgs-per-freq", s(adj_r.get("dmr_tgs_per_freq")))
+        _set("cfg-adj-max-fusion", s(adj_r.get("max_fusion_per_state")))
 
         sha_r = cfg.get("shallow_region", {})
         _set("cfg-sha-max-fm", s(sha_r.get("max_fm_freqs")))
         _set("cfg-sha-max-dmr", s(sha_r.get("max_dmr_freqs")))
+        _set("cfg-sha-max-fusion", s(sha_r.get("max_fusion_freqs")))
 
     def _collect_fields(self) -> None:
         """Write form fields back into self._raw_config."""
@@ -527,18 +768,38 @@ class ConfigEditorPane(Widget):
 
         cfg.setdefault("modes", {})["fm"] = g_sw("cfg-mode-fm")
         cfg.setdefault("modes", {})["dmr"] = g_sw("cfg-mode-dmr")
+        cfg.setdefault("modes", {})["fusion"] = g_sw("cfg-mode-fusion")
+        cfg.setdefault("modes", {})["nxdn"] = g_sw("cfg-mode-nxdn")
+        cfg.setdefault("modes", {})["p25"] = g_sw("cfg-mode-p25")
+        cfg.setdefault("modes", {})["m17"] = g_sw("cfg-mode-m17")
+        cfg.setdefault("modes", {})["tetra"] = g_sw("cfg-mode-tetra")
         cfg.setdefault("filters", {})["open_only"] = g_sw("cfg-open-only")
         cfg.setdefault("filters", {})["on_air_only"] = g_sw("cfg-on-air-only")
 
         qdmr = g("cfg-qdmr-yaml")
         if qdmr:
             cfg.setdefault("output", {})["qdmr_yaml"] = qdmr
+        csv_dir = g("cfg-csv-dir")
+        if csv_dir:
+            cfg.setdefault("output", {})["anytone_csv_dir"] = csv_dir
         summ = g("cfg-summary")
         if summ:
             cfg.setdefault("output", {})["summary"] = summ
         cd = g("cfg-cache-dir")
         if cd:
             cfg["cache_dir"] = cd
+
+        # Talkgroup settings
+        try:
+            sl_tg = self.query_one("#cfg-tg-networks", SelectionList)
+            cfg.setdefault("talkgroups", {})["networks"] = list(sl_tg.selected)
+        except Exception:
+            pass
+        cfg.setdefault("talkgroups", {})["fill_contacts"] = g_sw("cfg-tg-fill-contacts")
+        cfg.setdefault("talkgroups", {})["per_repeater_lookup"] = g_sw("cfg-tg-per-repeater")
+
+        self._collect_simplex()
+        self._collect_state_tgs()
 
         rl = g("cfg-rate-limit")
         try:
@@ -558,18 +819,33 @@ class ConfigEditorPane(Widget):
         v = _opt_int(g("cfg-home-max-dmr"))
         if v is not None:
             cfg.setdefault("home_region", {})["max_dmr_per_state"] = v
+        v = _opt_int(g("cfg-home-tgs-per-rep"))
+        if v is not None:
+            cfg.setdefault("home_region", {})["dmr_talkgroups_per_repeater"] = v
+        v = _opt_int(g("cfg-home-max-fusion"))
+        if v is not None:
+            cfg.setdefault("home_region", {})["max_fusion_per_state"] = v
         v = _opt_int(g("cfg-adj-max-fm"))
         if v is not None:
             cfg.setdefault("adjacent_region", {})["max_fm_per_state"] = v
         v = _opt_int(g("cfg-adj-max-dmr"))
         if v is not None:
             cfg.setdefault("adjacent_region", {})["max_dmr_freqs_per_state"] = v
+        v = _opt_int(g("cfg-adj-tgs-per-freq"))
+        if v is not None:
+            cfg.setdefault("adjacent_region", {})["dmr_tgs_per_freq"] = v
+        v = _opt_int(g("cfg-adj-max-fusion"))
+        if v is not None:
+            cfg.setdefault("adjacent_region", {})["max_fusion_per_state"] = v
         v = _opt_int(g("cfg-sha-max-fm"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_fm_freqs"] = v
         v = _opt_int(g("cfg-sha-max-dmr"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_dmr_freqs"] = v
+        v = _opt_int(g("cfg-sha-max-fusion"))
+        if v is not None:
+            cfg.setdefault("shallow_region", {})["max_fusion_freqs"] = v
 
         self._collect_hw_fields()
 

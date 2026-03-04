@@ -82,6 +82,12 @@ class RadioPane(Widget, SubprocessRunner):
         with Vertical():
             yield Label("[bold]Radio Operations[/bold]")
             with Horizontal(classes="row"):
+                yield Label("dmrconf:")
+                yield Input(placeholder="(auto-detect from PATH)", id="input-dmrconf-path")
+            with Horizontal(classes="row"):
+                yield Label("Output YAML:")
+                yield Input(placeholder="(default: codeplug.yaml next to config)", id="input-codeplug-yaml")
+            with Horizontal(classes="row"):
                 yield Label("Device:")
                 yield Input(placeholder="e.g. cu.usbmodem0000000100001", id="input-device")
             with Horizontal(classes="row"):
@@ -130,6 +136,10 @@ class RadioPane(Widget, SubprocessRunner):
     def on_mount(self) -> None:
         from plugsmith.config import load_app_config
         cfg = load_app_config()
+        if cfg.dmrconf_path:
+            self.query_one("#input-dmrconf-path", Input).value = cfg.dmrconf_path
+        if cfg.codeplug_yaml:
+            self.query_one("#input-codeplug-yaml", Input).value = cfg.codeplug_yaml
         if cfg.device:
             self.query_one("#input-device", Input).value = cfg.device
         if cfg.backup_dir:
@@ -171,6 +181,34 @@ class RadioPane(Widget, SubprocessRunner):
         cfg.auto_enable_gps = self.query_one("#lsw-auto-gps", LabeledSwitch).value
         cfg.auto_enable_roaming = self.query_one("#lsw-auto-roaming", LabeledSwitch).value
         cfg.save()
+
+    @on(Input.Changed, "#input-device")
+    @on(Input.Changed, "#input-backup-dir")
+    @on(Input.Changed, "#input-dmrconf-path")
+    @on(Input.Changed, "#input-codeplug-yaml")
+    def _persist_input_field(self, event: Input.Changed) -> None:
+        """Persist text input fields to app config immediately."""
+        field_map = {
+            "input-device": "device",
+            "input-backup-dir": "backup_dir",
+            "input-dmrconf-path": "dmrconf_path",
+            "input-codeplug-yaml": "codeplug_yaml",
+        }
+        attr = field_map.get(event.input.id or "", "")
+        if attr:
+            from plugsmith.config import load_app_config
+            cfg = load_app_config()
+            setattr(cfg, attr, event.value.strip())
+            cfg.save()
+
+    @on(Select.Changed, "#select-radio-model")
+    def _persist_radio_model(self, event: Select.Changed) -> None:
+        """Persist radio model selection to app config immediately."""
+        if event.value and event.value != Select.BLANK:
+            from plugsmith.config import load_app_config
+            cfg = load_app_config()
+            cfg.radio_model = str(event.value)
+            cfg.save()
 
     # ------------------------------------------------------------------
     # Internal helpers

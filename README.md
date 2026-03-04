@@ -22,7 +22,7 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **DMR talkgroup fetching** — pulls live TG lists from BrandMeister and TGIF; fills your radio's full contact capacity (up to 10,000 TGs) and uses actual per-repeater TS1/TS2 assignments from RadioID instead of generic defaults
 - **Write, read, verify, encode, decode** directly to/from your radio via dmrconf — plus offline YAML↔DFU conversion and callsign DB programming
 - **Live streaming output** — see every API fetch and dmrconf log line as it happens
-- **In-app config editor** — change callsign, location, filters without leaving the TUI
+- **In-app config editor** — all config options accessible from the app: callsign, location, modes, talkgroup settings, simplex channels, state TG overrides, hardware settings, and radio/device settings
 - **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
 - **First-run wizard** — guided setup on first launch
 - **Cross-platform** — macOS, Linux, Windows (WSL)
