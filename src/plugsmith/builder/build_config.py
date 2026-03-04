@@ -74,6 +74,19 @@ DEFAULT_CONFIG: dict = {
         ]
     },
     "state_talkgroups": {},
+    "talkgroups": {
+        # Networks to fetch talkgroup registry from (names, descriptions).
+        # "brandmeister" — BrandMeister API v2 (no auth, excellent USA coverage)
+        # "tgif"         — TGIF Network API (no auth, ~2,925 talkgroups)
+        "networks": ["brandmeister", "tgif"],
+        # Fill the radio's DMR contact list (up to radio max, e.g. 10,000 for AT-D878UVII)
+        # with named TGs from the registry. In-use TGs always come first.
+        "fill_contacts": True,
+        # Use RadioID per-repeater static TG assignments for home-tier DMR channels
+        # instead of hardcoded BrandMeister defaults. Falls back to defaults when
+        # RadioID has no data for a repeater.
+        "per_repeater_lookup": True,
+    },
     "roaming_zones": [],  # list of route/radius zone definitions; see docs/roaming-zones.md
     "output": {
         "qdmr_yaml": "codeplug.yaml",

@@ -122,16 +122,75 @@ def _dstar_channels_for_state(
 # Home / Adjacent / Shallow channel builders
 # ---------------------------------------------------------------------------
 
+def _dmr_slots_for_repeater(
+    callsign: str,
+    state_tg: Optional[int],
+    max_tgs: int,
+    repeater_tg_map: Optional[dict],
+) -> list[tuple[int, int, str]]:
+    """Return list of (timeslot, tg_num, label) for a DMR repeater.
+
+    Uses RadioID per-repeater static TG assignments when available;
+    falls back to hardcoded BrandMeister defaults otherwise.
+
+    Args:
+        callsign: Repeater callsign (used to look up RadioID data).
+        state_tg: BrandMeister state talkgroup number, or None.
+        max_tgs: Maximum total TG channels to emit for this repeater.
+        repeater_tg_map: dict[callsign → RepeaterTGData] from RadioIDClient,
+            or None to always use defaults.
+    """
+    radioid_data = repeater_tg_map.get(callsign.upper()) if repeater_tg_map else None
+
+    if radioid_data and (radioid_data.ts1_static or radioid_data.ts2_static):
+        # Use actual TG assignments registered in RadioID for this repeater.
+        # Budget: fill TS1 first (up to half), remainder goes to TS2.
+        ts1_tgs = radioid_data.ts1_static
+        ts2_tgs = radioid_data.ts2_static
+        ts1_budget = min(len(ts1_tgs), max(1, max_tgs // 2))
+        ts2_budget = min(len(ts2_tgs), max_tgs - ts1_budget)
+        slots = [(1, tg, tg_name(tg)) for tg in ts1_tgs[:ts1_budget]]
+        slots += [(2, tg, tg_name(tg)) for tg in ts2_tgs[:ts2_budget]]
+        return slots
+
+    # Hardcoded BrandMeister defaults
+    slots = [
+        (1, 9, "Local"),
+        (1, 8, "Regional"),
+    ]
+    if state_tg:
+        slots.append((1, state_tg, "State"))
+    slots.extend([
+        (2, 3100, "US Natl"),
+        (2, 93, "NAm"),
+        (2, 310, "TAC310"),
+        (2, 311, "TAC311"),
+    ])
+    return slots[:max_tgs]
+
+
 def home_state_channels(
     state: str,
     state_repeaters: list[Repeater],
     config: dict,
     state_tg_map: dict[str, int],
+    repeater_tg_map: Optional[dict] = None,
 ) -> list[dict]:
-    """Build per-repeater channels for a home-tier state."""
+    """Build per-repeater channels for a home-tier state.
+
+    Args:
+        state: Two-letter state abbreviation.
+        state_repeaters: All repeaters for this state.
+        config: Builder config dict.
+        state_tg_map: Maps state abbreviation → BrandMeister state TG number.
+        repeater_tg_map: Optional dict[callsign → RepeaterTGData] from RadioIDClient.
+            When provided, per-repeater RadioID TG assignments are used instead of
+            hardcoded defaults for DMR channel generation.
+    """
     home_cfg = config.get("home_region", {})
     max_fm = home_cfg.get("max_fm_per_state")
     max_dmr = home_cfg.get("max_dmr_per_state")
+    max_tgs_per_rpt = home_cfg.get("dmr_talkgroups_per_repeater", 7)
     max_fusion = home_cfg.get("max_fusion_per_state", 50)
     max_dstar = home_cfg.get("max_dstar_per_state", 30)
     state_tg = state_tg_map.get(state)
@@ -157,18 +216,7 @@ def home_state_channels(
         if r.is_dmr and (max_dmr is None or dmr_count < max_dmr):
             dmr_count += 1
             cc = r.dmr_color_code if r.dmr_color_code else 1
-            dmr_slots = [
-                (1, 9, "Local"),
-                (1, 8, "Regional"),
-            ]
-            if state_tg:
-                dmr_slots.append((1, state_tg, "State"))
-            dmr_slots.extend([
-                (2, 3100, "US Natl"),
-                (2, 93, "NAm"),
-                (2, 310, "TAC310"),
-                (2, 311, "TAC311"),
-            ])
+            dmr_slots = _dmr_slots_for_repeater(r.callsign, state_tg, max_tgs_per_rpt, repeater_tg_map)
             for ts, tg_num, label in dmr_slots:
                 name = f"{r.callsign[:9]} {label}"[:CHANNEL_NAME_MAX]
                 channels.append({
@@ -493,11 +541,16 @@ def organize_zones_tiered(
     state_tg_map: dict[str, int],
     max_channels: int = MAX_CHANNELS,
     max_channels_per_zone: int = MAX_CHANNELS_PER_ZONE,
+    repeater_tg_map: Optional[dict] = None,
 ) -> list[dict]:
     """Build the full ordered zone spec list for the tiered_region strategy.
 
     Order: home_state (band-split) → other home alphabetical → adjacent alphabetical
            → shallow alphabetical → Simplex.
+
+    Args:
+        repeater_tg_map: Optional dict[callsign → RepeaterTGData] from RadioIDClient.
+            Passed through to home_state_channels() for per-repeater TG assignment.
     """
     from .api import US_STATES as _US_STATES
 
@@ -512,7 +565,7 @@ def organize_zones_tiered(
     # Primary home state: split 2m / 70cm
     if home_state in state_tiers:
         hs_rpts = [r for r in repeaters if r.state_abbr == home_state]
-        hs_ch = home_state_channels(home_state, hs_rpts, config, state_tg_map)
+        hs_ch = home_state_channels(home_state, hs_rpts, config, state_tg_map, repeater_tg_map)
         ch_2m   = [ch for ch in hs_ch if 144.0 <= ch["rx_freq"] <= 148.0]
         ch_70cm = [ch for ch in hs_ch if 420.0 <= ch["rx_freq"] <= 450.0]
         _add_zone_with_overflow(zone_specs, f"{home_state} 2m",   ch_2m,   "home", home_state, effective_zone_max)
@@ -524,7 +577,7 @@ def organize_zones_tiered(
         if state == home_state:
             continue
         st_rpts = [r for r in repeaters if r.state_abbr == state]
-        st_ch = home_state_channels(state, st_rpts, config, state_tg_map)
+        st_ch = home_state_channels(state, st_rpts, config, state_tg_map, repeater_tg_map)
         _add_zone_with_overflow(zone_specs, state, st_ch, "home", state, effective_zone_max)
         log.info(f"{state} (home): {len(st_ch)} channels")
 

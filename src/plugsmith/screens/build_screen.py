@@ -114,9 +114,8 @@ class BuildPane(Widget):
 
     @on(Button.Pressed, "#btn-clear-cache")
     def _clear_cache(self) -> None:
-        from plugsmith.config import load_app_config
         from plugsmith.builder.api import RepeaterBookClient
-        cfg = load_app_config()
+        from plugsmith.builder.talkgroups import TalkgroupClient, RadioIDClient
         config_path = self.query_one("#input-config-path", Input).value.strip()
         cache_dir = ".rb_cache"
         if config_path:
@@ -128,8 +127,9 @@ class BuildPane(Widget):
                     cache_dir = str(Path(config_path).parent / cache_dir)
             except Exception:
                 pass
-        client = RepeaterBookClient(cache_dir=cache_dir)
-        count = client.clear_cache()
+        count = RepeaterBookClient(cache_dir=cache_dir).clear_cache()
+        count += TalkgroupClient(cache_dir=cache_dir).clear_cache()
+        count += RadioIDClient(cache_dir=cache_dir).clear_cache()
         log_widget = self.query_one("#build-log", OutputLog)
         log_widget.write_line(f"Cleared {count} cache files from {cache_dir}")
 
@@ -289,12 +289,55 @@ class BuildPane(Widget):
             state_tg_map = dict(STATE_TGS_DEFAULT)
             state_tg_map.update(config.get("state_talkgroups", {}))
 
+            # ----------------------------------------------------------------
+            # Fetch TG registry (BrandMeister + TGIF) and per-repeater TG data
+            # from RadioID — both cached for 24 hours.
+            # ----------------------------------------------------------------
+            tg_cfg = config.get("talkgroups", {})
+            tg_registry = None
+            repeater_tg_map: dict = {}
+
+            cache_dir_abs = str(Path(config_path).parent / config.get("cache_dir", ".rb_cache"))
+            rate_limit = config.get("rate_limit_seconds", 2.0)
+
+            if tg_cfg.get("fill_contacts", True) or tg_cfg.get("per_repeater_lookup", True):
+                from plugsmith.builder.talkgroups import TalkgroupClient
+                networks = tg_cfg.get("networks", ["brandmeister", "tgif"])
+                set_status("Fetching TG registry…")
+                post_line(f"Fetching TG registry ({', '.join(networks)})…")
+                tg_client = TalkgroupClient(
+                    cache_dir=cache_dir_abs,
+                    rate_limit=rate_limit,
+                    user_agent=user_agent,
+                    progress_callback=progress_cb,
+                )
+                tg_registry = tg_client.fetch_registry(networks=networks)
+                post_line(f"TG registry: {len(tg_registry)} talkgroups")
+
+            if tg_cfg.get("per_repeater_lookup", True):
+                from plugsmith.builder.talkgroups import RadioIDClient
+                home_state_abbrs = [s for s, t in state_tiers.items() if t == "home"]
+                if home_state_abbrs:
+                    set_status("Fetching RadioID TG assignments…")
+                    post_line(
+                        f"Fetching RadioID TG assignments for {len(home_state_abbrs)} home state(s)…"
+                    )
+                    radioid_client = RadioIDClient(
+                        cache_dir=cache_dir_abs,
+                        rate_limit=rate_limit,
+                        user_agent=user_agent,
+                        progress_callback=progress_cb,
+                    )
+                    repeater_tg_map = radioid_client.fetch_states(home_state_abbrs)
+                    post_line(f"RadioID: {len(repeater_tg_map)} repeater TG records")
+
             set_status("Organizing zones…")
             post_line("Organizing tiered zones…")
             zone_specs = organize_zones_tiered(
                 repeaters, state_tiers, ctcss_map, input_freq_map, config, state_tg_map,
                 max_channels=radio_profile.max_channels,
                 max_channels_per_zone=radio_profile.max_channels_per_zone,
+                repeater_tg_map=repeater_tg_map or None,
             )
             total_ch = sum(len(zs["channels"]) for zs in zone_specs)
             post_line(f"Zones: {len(zone_specs)}, channels: {total_ch}")
@@ -323,12 +366,15 @@ class BuildPane(Widget):
             post_line("Generating qdmr YAML…")
             hw_key = radio_profile.hw_settings_key
             hw_settings = config.get(hw_key) if hw_key else None
+            radio_max_tgs = getattr(radio_profile, "max_talkgroups", 10_000)
             codeplug = generate_codeplug_yaml(
                 zone_specs=zone_specs,
                 dmr_id=dmr_id,
                 callsign=callsign,
                 hw_settings=hw_settings,
                 hw_settings_key=hw_key,
+                tg_registry=tg_registry if tg_cfg.get("fill_contacts", True) else None,
+                radio_max_tgs=radio_max_tgs,
             )
 
             post_line(f"Writing codeplug to {output_path}…")

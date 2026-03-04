@@ -68,7 +68,7 @@ class RepeaterBookClient:
     def _cache_path(self, state_id: str) -> Path:
         return self.cache_dir / f"state_{state_id}.json"
 
-    def _is_cache_fresh(self, path: Path, max_age_hours: float = 12.0) -> bool:
+    def _is_cache_fresh(self, path: Path, max_age_hours: float = 720.0) -> bool:
         if not path.exists():
             return False
         age = time.time() - path.stat().st_mtime

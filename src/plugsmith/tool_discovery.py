@@ -31,6 +31,7 @@ class RadioProfile:
     hw_family: str                  # "anytone" | "tyt" | "radioddity" | "generic"
     hw_settings_key: Optional[str]  # config.yaml key for hw block, e.g. "anytone_settings"
     supported_modes: frozenset      # frozenset of mode strings this radio can physically do
+    max_talkgroups: int = 10_000    # DMR contact list capacity
 
 
 _FM_DMR = frozenset({"fm", "dmr"})
