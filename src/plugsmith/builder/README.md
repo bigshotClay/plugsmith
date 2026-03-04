@@ -115,7 +115,7 @@ codeplug = generate_codeplug_yaml(
     dmr_id=dmr_id,
     callsign=callsign,
     tg_registry=registry,      # TalkgroupRegistry or None
-    radio_max_tgs=10_000,      # from radio profile; defaults to 10,000
+    radio_max_tgs=10_000,      # from radio profile; varies by radio (GD-77: 1,024; AnyTone: 10,000)
 )
 ```
 

@@ -26,14 +26,44 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
 - **First-run wizard** — guided setup on first launch
 - **Cross-platform** — macOS, Linux, Windows (WSL)
-- **Multi-mode support** — FM and DMR stable; System Fusion (Yaesu) and D-Star (Icom) experimental; P-25, NXDN, M17, Tetra scaffolded
-- **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Yaesu, Icom, Baofeng, and more
+- **Multi-mode support** — FM and DMR stable; System Fusion repeaters included as FM-analog channels on all radios; P-25, NXDN, M17, Tetra scaffolded
+- **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Baofeng, and more
 
 ## Requirements
 
 - Python 3.11+
 - [`dmrconf`](https://dm3mat.darc.de/qdmr/) installed and on your PATH
 - A codeplug `config.yaml` (plugsmith can create a starter one)
+- **RepeaterBook API access** — see below
+
+## RepeaterBook API Access
+
+plugsmith fetches repeater data from [RepeaterBook](https://www.repeaterbook.com). As of March 3, 2026, API access requires **allowlist approval** from RepeaterBook — it is **not** granted automatically by creating a website account, and unapproved User-Agents are denied outright.
+
+**Free for non-commercial use** (hobby, open-source, emergency communications, club, etc.).
+
+### How to request access
+
+1. Fill out the request form at **[repeaterbook.com/api/token_request.php](https://www.repeaterbook.com/api/token_request.php)**
+2. Select a project category (e.g. "Hobby" or "Open Source")
+3. Describe your intended use (e.g. "Generating DMR codeplugs for personal amateur radio use with plugsmith")
+4. Wait for admin approval — a RepeaterBook account is not required to submit, but approval is not instant
+
+### Current auth: email in User-Agent
+
+Once approved, set your contact email in `config.yaml`:
+
+```yaml
+api_email: you@example.com
+```
+
+plugsmith includes this in its HTTP User-Agent header as required by RepeaterBook's terms. **Generic or fake email addresses will receive a 401 response.** All repeater data is cached locally for 30 days, so the API is only contacted when the cache is stale.
+
+### Upcoming: token-based authentication
+
+RepeaterBook is targeting a token-based authentication system for rollout by **March 31, 2026**, after which the current allowlist-only approach will be phased out. The token request form above is the entry point — admin approval is required before any token is issued.
+
+Two token types will exist: `app_...` tokens (default, no RepeaterBook account needed) and `usr_...` tokens (for users with a mapped RepeaterBook account). The transmission mechanism (which header or parameter carries the token) has not yet been published. plugsmith will add token support once the specification is released.
 
 ## Install
 
@@ -85,8 +115,8 @@ Any radio supported by dmrconf. Common models:
 - TYT MD-UV390, MD-380, MD-390
 - Radioddity GD-77, GD-73
 - Baofeng DM-1801
-- Yaesu FT3D, FT5D *(System Fusion — experimental)*
-- Icom ID-51, ID-52 *(D-Star — experimental)*
+
+> **Note:** Yaesu System Fusion and Icom D-STAR radios are not supported by dmrconf. plugsmith cannot write codeplugs to these radios.
 
 ## Supported Modes
 
@@ -97,17 +127,12 @@ plugsmith selects repeater modes based on your radio's hardware capabilities and
 |------|--------|-------|
 | FM Analog | ✅ Stable | Full support — analog channels with CTCSS |
 | DMR | ✅ Stable | Full support — digital channels with talkgroups |
-| System Fusion (C4FM) | ⚠️ Experimental | Channels generated as analog; requires Fusion-capable radio (Yaesu FT3D, FT5D, etc.). Not hardware-tested — please [submit a report](#hardware-submission) if you use this. |
-| D-Star | ⚠️ Experimental | Basic channel generation; requires D-Star-capable radio (Icom ID-51, ID-52, etc.). qdmr YAML format unverified against real hardware — please [submit a report](#hardware-submission). |
+| System Fusion (C4FM) | ✅ Supported | C4FM/Fusion repeaters are backward-compatible FM. plugsmith includes them as FM-analog channels on all radios when `modes.fusion: true`. Note: Yaesu FT3D/FT5D radios cannot be programmed via dmrconf. |
+| D-Star | ❌ Not supported | D-STAR is not supported by dmrconf. Icom D-STAR radios cannot be programmed via plugsmith. |
 | APCO P-25 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
 | NXDN | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
 | M17 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
 | Tetra | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
-
-**Experimental modes** have been implemented based on the qdmr YAML specification but
-have not been tested against real hardware + dmrconf. If your radio supports one of
-these modes, please use the Hardware Submission feature to send us a working config
-so we can promote it to stable.
 
 ## Hardware Submission
 

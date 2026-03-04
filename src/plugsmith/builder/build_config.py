@@ -26,7 +26,6 @@ DEFAULT_CONFIG: dict = {
     "modes": {
         "fm": True,
         "dmr": True,
-        "dstar": False,
         "fusion": False,
         "nxdn": False,
         "p25": False,
@@ -50,20 +49,17 @@ DEFAULT_CONFIG: dict = {
         "max_dmr_per_state": 100,
         "dmr_talkgroups_per_repeater": 7,
         "max_fusion_per_state": 50,
-        "max_dstar_per_state": 30,
     },
     "adjacent_region": {
         "max_fm_per_state": 30,
         "max_dmr_freqs_per_state": 5,
         "dmr_tgs_per_freq": 3,
         "max_fusion_per_state": 10,
-        "max_dstar_per_state": 5,
     },
     "shallow_region": {
         "max_fm_freqs": 10,
         "max_dmr_freqs": 3,
         "max_fusion_freqs": 3,
-        "max_dstar_freqs": 2,
     },
     "simplex": {
         "channels": [

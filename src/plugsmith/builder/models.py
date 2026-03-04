@@ -23,7 +23,6 @@ class Repeater:
     status: str            # On-air, Off-air, Testing
     is_fm: bool
     is_dmr: bool
-    is_dstar: bool
     is_fusion: bool
     is_nxdn: bool
     is_p25: bool

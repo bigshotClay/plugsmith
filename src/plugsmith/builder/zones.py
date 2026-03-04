@@ -91,33 +91,6 @@ def _fusion_channels_for_state(
     return channels
 
 
-def _dstar_channels_for_state(
-    repeaters: list[Repeater],
-    max_count: Optional[int],
-) -> list[dict]:
-    """Build D-Star channels for D-Star repeaters.
-
-    Uses ch_type="dstar" — the codeplug generator emits a dstar: YAML block.
-    NOTE: qdmr dstar: channel format is based on spec v0.12.0 but has not been
-    verified against real Icom hardware + dmrconf. See codeplug.py for details.
-    """
-    channels: list[dict] = []
-    count = 0
-    for r in sorted(repeaters, key=lambda r: r.distance):
-        if not r.is_dstar:
-            continue
-        if max_count is not None and count >= max_count:
-            break
-        count += 1
-        channels.append({
-            "ch_type": "dstar",
-            "name": make_channel_name(r, "DStar"),
-            "rx_freq": r.frequency,
-            "tx_freq": r.input_freq,
-        })
-    return channels
-
-
 # ---------------------------------------------------------------------------
 # Home / Adjacent / Shallow channel builders
 # ---------------------------------------------------------------------------
@@ -192,7 +165,6 @@ def home_state_channels(
     max_dmr = home_cfg.get("max_dmr_per_state")
     max_tgs_per_rpt = home_cfg.get("dmr_talkgroups_per_repeater", 7)
     max_fusion = home_cfg.get("max_fusion_per_state", 50)
-    max_dstar = home_cfg.get("max_dstar_per_state", 30)
     state_tg = state_tg_map.get(state)
     modes = config.get("modes", {})
 
@@ -233,9 +205,6 @@ def home_state_channels(
     if modes.get("fusion"):
         channels.extend(_fusion_channels_for_state(state_repeaters, max_fusion))
 
-    if modes.get("dstar"):
-        channels.extend(_dstar_channels_for_state(state_repeaters, max_dstar))
-
     return channels
 
 
@@ -252,7 +221,6 @@ def adjacent_state_channels(
     max_dmr_freqs = adj_cfg.get("max_dmr_freqs_per_state", 5)
     dmr_tgs = adj_cfg.get("dmr_tgs_per_freq", 3)
     max_fusion = adj_cfg.get("max_fusion_per_state", 10)
-    max_dstar = adj_cfg.get("max_dstar_per_state", 5)
     modes = config.get("modes", {})
 
     rpts = sorted(state_repeaters, key=lambda r: r.distance)
@@ -302,9 +270,6 @@ def adjacent_state_channels(
     if modes.get("fusion"):
         channels.extend(_fusion_channels_for_state(state_repeaters, max_fusion))
 
-    if modes.get("dstar"):
-        channels.extend(_dstar_channels_for_state(state_repeaters, max_dstar))
-
     return channels
 
 
@@ -320,14 +285,12 @@ def shallow_state_channels(
     max_fm = sha_cfg.get("max_fm_freqs", 10)
     max_dmr = sha_cfg.get("max_dmr_freqs", 3)
     max_fusion = sha_cfg.get("max_fusion_freqs", 3)
-    max_dstar = sha_cfg.get("max_dstar_freqs", 2)
     modes = config.get("modes", {})
 
     fm_freq_counts: Counter = Counter()
     dmr_freq_counts: Counter = Counter()
     dmr_cc_by_freq: dict[float, list[int]] = defaultdict(list)
     fusion_freq_counts: Counter = Counter()
-    dstar_freq_counts: Counter = Counter()
 
     for r in state_repeaters:
         if r.is_fm:
@@ -339,8 +302,6 @@ def shallow_state_channels(
                 dmr_cc_by_freq[freq_key].append(r.dmr_color_code)
         if r.is_fusion:
             fusion_freq_counts[round(r.frequency, 4)] += 1
-        if r.is_dstar:
-            dstar_freq_counts[round(r.frequency, 4)] += 1
 
     channels: list[dict] = []
 
@@ -388,18 +349,6 @@ def shallow_state_channels(
                 "tx_freq": tx_freq,
                 "pl_tone": pl_tone,
                 "tsq_tone": None,
-            })
-
-    if modes.get("dstar"):
-        for freq, _ in dstar_freq_counts.most_common(max_dstar):
-            key = (state, freq)
-            tx_freq = input_freq_map.get(key) or freq
-            name = f"{state} {freq:.3f} DS"[:CHANNEL_NAME_MAX]
-            channels.append({
-                "ch_type": "dstar",
-                "name": name,
-                "rx_freq": freq,
-                "tx_freq": tx_freq,
             })
 
     return channels
@@ -469,7 +418,6 @@ def estimate_channels_uncapped(
     state_fm: dict[str, int] = defaultdict(int)
     state_dmr: dict[str, int] = defaultdict(int)
     state_fusion: dict[str, int] = defaultdict(int)
-    state_dstar: dict[str, int] = defaultdict(int)
     for r in repeaters:
         if r.state_abbr in state_tiers:
             if r.is_fm:
@@ -478,12 +426,10 @@ def estimate_channels_uncapped(
                 state_dmr[r.state_abbr] += 1
             if r.is_fusion and modes.get("fusion"):
                 state_fusion[r.state_abbr] += 1
-            if r.is_dstar and modes.get("dstar"):
-                state_dstar[r.state_abbr] += 1
     tgs = config.get("home_region", {}).get("dmr_talkgroups_per_repeater", 7)
     simplex = len(config.get("simplex", {}).get("channels", []))
     return simplex + sum(
-        state_fm[s] + state_dmr[s] * tgs + state_fusion[s] + state_dstar[s]
+        state_fm[s] + state_dmr[s] * tgs + state_fusion[s]
         for s in state_tiers
     )
 
@@ -518,16 +464,13 @@ def scale_config_to_radio(
     _apply("home_region",    "max_fm_per_state",        150)
     _apply("home_region",    "max_dmr_per_state",       100)
     _apply("home_region",    "max_fusion_per_state",     50)
-    _apply("home_region",    "max_dstar_per_state",      30)
     _apply("adjacent_region","max_fm_per_state",         30)
     _apply("adjacent_region","max_dmr_freqs_per_state",   5)
     _apply("adjacent_region","dmr_tgs_per_freq",          3)
     _apply("adjacent_region","max_fusion_per_state",     10)
-    _apply("adjacent_region","max_dstar_per_state",       5)
     _apply("shallow_region", "max_fm_freqs",             10)
     _apply("shallow_region", "max_dmr_freqs",             3)
     _apply("shallow_region", "max_fusion_freqs",          3)
-    _apply("shallow_region", "max_dstar_freqs",           2)
 
     return config
 

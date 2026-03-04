@@ -39,7 +39,7 @@ Key fields:
 |-----|-------------|
 | `dmr_id` | Your DMR ID number (register at radioid.net) |
 | `callsign` | Your amateur radio callsign |
-| `api_email` | **Required.** Your email address — sent in the RepeaterBook API User-Agent header per their ToS. Generic or fake values get 401. |
+| `api_email` | **Required.** Your email address — sent in the RepeaterBook API User-Agent header per their terms. Generic or fake values get 401. Requires prior allowlist approval at [repeaterbook.com/api/token_request.php](https://www.repeaterbook.com/api/token_request.php). |
 | `reference_location.lat/lon` | Your QTH coordinates for distance calculations |
 | `home_state` | Your home state (gets extra 2m/70cm zone splitting) |
 | `organization.strategy` | `tiered_region` (recommended), `state_band`, `state_county`, `distance_rings` |
@@ -47,8 +47,8 @@ Key fields:
 | `tiers.adjacent_radius_miles` | States within this distance get top-N coverage |
 | `modes.fm` | Enable analog FM channels (default `true`) |
 | `modes.dmr` | Enable DMR digital channels (default `true`) |
-| `modes.fusion` | Enable System Fusion / C4FM channels — requires Fusion-capable radio e.g. Yaesu FT3D/FT5D (default `false`) |
-| `modes.dstar` | Enable D-Star channels — requires D-Star-capable radio e.g. Icom ID-51/ID-52 (default `false`) |
+| `modes.fusion` | Include System Fusion / C4FM repeaters as FM-analog channels (Fusion is backward-compatible FM). Works on all dmrconf-supported radios. Does **not** require a Yaesu radio — Yaesu FT3D/FT5D are not supported by dmrconf. Default `false`. |
+| `modes.dstar` | **Removed.** D-STAR is not supported by dmrconf. Icom D-STAR radios cannot be programmed via plugsmith. |
 | `modes.p25` / `modes.nxdn` / `modes.m17` / `modes.tetra` | Scaffolded — repeater data is parsed and filtered, but no channels are generated yet (all default `false`) |
 | `bands` | List of bands: `2m`, `70cm` |
 | `filters.open_only` | Only include OPEN repeaters |
@@ -72,7 +72,6 @@ named zone on the next build, appended after the main tiered zones.
 | `include_fm` | both | bool | `true` | Include analog FM channels |
 | `include_dmr` | both | bool | `true` | Include DMR digital channels |
 | `include_fusion` | both | bool | `false` | Include System Fusion channels (requires `modes.fusion: true`) |
-| `include_dstar` | both | bool | `false` | Include D-Star channels (requires `modes.dstar: true`) |
 | `max_channels` | both | int | radio max | Optional per-zone channel cap |
 
 Location strings accept city names (`"Chicago, IL"`) or raw coordinates (`"41.85,-87.65"`).
@@ -130,9 +129,5 @@ Common dmrconf radio keys (first column in `dmrconf --list-radios`):
 | `uv390` | TYT MD-UV390 | FM, DMR |
 | `md380` | TYT MD-380 | FM, DMR |
 | `gd77` | Radioddity GD-77 | FM, DMR |
-| `ft3d` | Yaesu FT3D | FM, DMR, Fusion ⚠️ |
-| `ft5d` | Yaesu FT5D | FM, DMR, Fusion ⚠️ |
-| `id51` | Icom ID-51 | FM, D-Star ⚠️ |
-| `id52` | Icom ID-52 | FM, D-Star ⚠️ |
 
-⚠️ = experimental — channel generation implemented but not hardware-verified.
+> **Note:** Yaesu System Fusion and Icom D-STAR radios are not supported by dmrconf and cannot be programmed via plugsmith. This is a limitation of dmrconf, not plugsmith.

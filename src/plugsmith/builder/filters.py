@@ -64,7 +64,6 @@ def parse_repeaters(raw_data: list[dict]) -> list[Repeater]:
 
             is_fm = r.get("FM Analog", "No") == "Yes"
             is_dmr = r.get("DMR", "No") == "Yes"
-            is_dstar = r.get("D-Star", "No") == "Yes"
             is_fusion = r.get("System Fusion", "No") == "Yes"
             is_nxdn = r.get("NXDN", "No") == "Yes"
             is_p25 = r.get("APCO P-25", "No") == "Yes"
@@ -99,7 +98,6 @@ def parse_repeaters(raw_data: list[dict]) -> list[Repeater]:
                 status=_s(r.get("Operational Status")),
                 is_fm=is_fm,
                 is_dmr=is_dmr,
-                is_dstar=is_dstar,
                 is_fusion=is_fusion,
                 is_nxdn=is_nxdn,
                 is_p25=is_p25,
@@ -136,7 +134,6 @@ def filter_repeaters(
     repeaters: list[Repeater],
     include_fm: bool = True,
     include_dmr: bool = True,
-    include_dstar: bool = False,
     include_fusion: bool = False,
     include_nxdn: bool = False,
     include_p25: bool = False,
@@ -160,7 +157,6 @@ def filter_repeaters(
         has_wanted = (
             (include_fm and r.is_fm)
             or (include_dmr and r.is_dmr)
-            or (include_dstar and r.is_dstar)
             or (include_fusion and r.is_fusion)
             or (include_nxdn and r.is_nxdn)
             or (include_p25 and r.is_p25)
