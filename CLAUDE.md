@@ -32,6 +32,7 @@ src/plugsmith/
     codeplug.py        — generate_codeplug_yaml
     export.py          — write_qdmr_yaml, write_anytone_csv, write_summary
     build_config.py    — load_config, DEFAULT_CONFIG
+    roaming.py         — geocoding, routing, roaming zone generation
   screens/
     main_screen.py     — MainScreen, DashboardPane
     build_screen.py    — BuildPane (runs builder in thread)
@@ -39,6 +40,8 @@ src/plugsmith/
     config_editor.py   — ConfigEditorPane
     setup_wizard.py    — SetupWizardScreen
     modals.py          — ConfirmModal, ErrorModal, FilePickerModal
+    roaming_screen.py  — RoamingPane (Roaming tab)
+    roaming_zone_modal.py — RoamingZoneModal (3-step add/edit modal)
   widgets/
     output_log.py      — RichLog + autoscroll
     status_bar.py      — persistent status bar

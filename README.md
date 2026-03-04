@@ -22,6 +22,7 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **Write, read, verify** directly to your radio via dmrconf
 - **Live streaming output** — see every API fetch and dmrconf log line as it happens
 - **In-app config editor** — change callsign, location, filters without leaving the TUI
+- **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
 - **First-run wizard** — guided setup on first launch
 - **Cross-platform** — macOS, Linux, Windows (WSL)
 - **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Baofeng, and more
@@ -61,6 +62,7 @@ After the wizard, you're dropped into the main interface with four tabs:
 | **Build** | Fetch RepeaterBook data and generate codeplug.yaml |
 | **Radio** | Detect, read, write, and verify with dmrconf |
 | **Config** | Edit config.yaml fields in-app |
+| **Roaming** | Add/edit/delete roaming zone definitions |
 
 ## Keyboard Shortcuts
 
@@ -70,6 +72,7 @@ After the wizard, you're dropped into the main interface with four tabs:
 | `Ctrl+B` | Jump to Build tab |
 | `Ctrl+R` | Jump to Radio tab |
 | `Ctrl+E` | Jump to Config tab |
+| `Ctrl+G` | Jump to Roaming tab |
 | `F1` | Help |
 
 ## Supported Radios

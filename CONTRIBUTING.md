@@ -33,14 +33,17 @@ plugsmith/
 │   │   ├── zones.py        # organize_zones_tiered + legacy strategies
 │   │   ├── codeplug.py     # generate_codeplug_yaml → qdmr YAML dict
 │   │   ├── export.py       # write_qdmr_yaml, write_anytone_csv, write_summary
-│   │   └── build_config.py # load_config, DEFAULT_CONFIG
+│   │   ├── build_config.py # load_config, DEFAULT_CONFIG
+│   │   └── roaming.py      # geocoding (Nominatim), routing (OSRM), roaming zone generation
 │   ├── screens/
-│   │   ├── main_screen.py  # MainScreen with TabbedContent (4 tabs)
-│   │   ├── build_screen.py # BuildPane: calls builder in @work(thread=True)
-│   │   ├── radio_screen.py # RadioPane: dmrconf operations via SubprocessRunner
-│   │   ├── config_editor.py# ConfigEditorPane: YAML round-trip editor
-│   │   ├── setup_wizard.py # SetupWizardScreen: 3-step first-run modal
-│   │   └── modals.py       # ConfirmModal, ErrorModal, FilePickerModal
+│   │   ├── main_screen.py     # MainScreen with TabbedContent (5 tabs)
+│   │   ├── build_screen.py    # BuildPane: calls builder in @work(thread=True)
+│   │   ├── radio_screen.py    # RadioPane: dmrconf operations via SubprocessRunner
+│   │   ├── config_editor.py   # ConfigEditorPane: YAML round-trip editor
+│   │   ├── setup_wizard.py    # SetupWizardScreen: 3-step first-run modal
+│   │   ├── modals.py          # ConfirmModal, ErrorModal, FilePickerModal
+│   │   ├── roaming_screen.py  # RoamingPane: list/add/edit/delete roaming zone defs
+│   │   └── roaming_zone_modal.py # RoamingZoneModal: 3-step add/edit modal
 │   ├── widgets/
 │   │   ├── output_log.py   # RichLog + Clear + auto-scroll toggle
 │   │   ├── status_bar.py   # Persistent status row (dmrconf health, config, radio)
@@ -48,6 +51,11 @@ plugsmith/
 │   └── styles/
 │       └── plugsmith.tcss  # All Textual CSS
 ```
+
+### External APIs used by roaming.py
+
+- **Nominatim** (`nominatim.openstreetmap.org`) — geocoding city names to lat/lon. No auth required. Results cached in `.rb_cache/geocode_cache.json`.
+- **OSRM** (`router.project-osrm.org`) — driving route geometry. No auth required. Results cached in `.rb_cache/route_{hash}.json`. Falls back to linear interpolation if unavailable.
 
 ### Key design decisions
 

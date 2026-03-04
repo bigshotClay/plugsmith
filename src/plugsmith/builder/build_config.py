@@ -56,6 +56,7 @@ DEFAULT_CONFIG: dict = {
         ]
     },
     "state_talkgroups": {},
+    "roaming_zones": [],  # list of route/radius zone definitions; see docs/roaming-zones.md
     "output": {
         "qdmr_yaml": "codeplug.yaml",
         "anytone_csv_dir": "anytone_csv",

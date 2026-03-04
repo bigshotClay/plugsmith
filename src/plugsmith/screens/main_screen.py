@@ -12,6 +12,7 @@ from plugsmith.widgets.status_bar import StatusBar
 from plugsmith.screens.build_screen import BuildPane
 from plugsmith.screens.radio_screen import RadioPane
 from plugsmith.screens.config_editor import ConfigEditorPane
+from plugsmith.screens.roaming_screen import RoamingPane
 
 
 class DashboardPane(TabPane):
@@ -170,6 +171,7 @@ class MainScreen(Screen):
         Binding("ctrl+b", "switch_tab('tab-build')", "Build"),
         Binding("ctrl+r", "switch_tab('tab-radio')", "Radio"),
         Binding("ctrl+e", "switch_tab('tab-config')", "Config"),
+        Binding("ctrl+g", "switch_tab('tab-roaming')", "Roaming"),
         Binding("f1", "help", "Help"),
     ]
 
@@ -188,6 +190,8 @@ class MainScreen(Screen):
                 yield RadioPane()
             with TabPane("Config", id="tab-config"):
                 yield ConfigEditorPane()
+            with TabPane("Roaming", id="tab-roaming"):
+                yield RoamingPane()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -220,6 +224,7 @@ class MainScreen(Screen):
             "  Ctrl+B — Build tab\n"
             "  Ctrl+R — Radio tab\n"
             "  Ctrl+E — Config tab\n"
+            "  Ctrl+G — Roaming tab\n"
             "  F1     — This help\n\n"
             "Docs: https://github.com/yourusername/plugsmith",
         ))

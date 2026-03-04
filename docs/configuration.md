@@ -52,6 +52,26 @@ Key fields:
 | `rate_limit_seconds` | Seconds between RepeaterBook API requests (min 5.0) |
 | `cache_dir` | Directory for RepeaterBook JSON cache files |
 
+### roaming_zones
+
+Optional list of route or radius zone definitions. Each definition is built into a
+named zone on the next build, appended after the main tiered zones.
+
+| Field | Mode | Type | Default | Description |
+|-------|------|------|---------|-------------|
+| `name` | both | string | required | Zone name |
+| `mode` | both | `route` \| `radius` | required | Zone type |
+| `waypoints` | route | list of strings | required | Start and end locations |
+| `corridor_miles` | route | number | `25` | Half-width of route corridor in miles |
+| `center` | radius | string | required | Center location |
+| `radius_miles` | radius | number | `50` | Search radius in miles |
+| `include_fm` | both | bool | `true` | Include analog FM channels |
+| `include_dmr` | both | bool | `true` | Include DMR digital channels |
+| `max_channels` | both | int | radio max | Optional per-zone channel cap |
+
+Location strings accept city names (`"Chicago, IL"`) or raw coordinates (`"41.85,-87.65"`).
+See [docs/roaming-zones.md](roaming-zones.md) for full documentation.
+
 ### anytone_settings
 
 The `anytone_settings` block contains radio-specific hardware settings

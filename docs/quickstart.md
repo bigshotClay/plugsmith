@@ -69,6 +69,20 @@ Before writing, read the current codeplug:
 
 Your radio is now programmed.
 
+## Step 8 (optional): Plan a roaming zone
+
+Open the **Roaming** tab (`Ctrl+G`) to add a route or radius zone:
+
+1. Click **Add Route** (two cities) or **Add Radius Zone** (one location + miles)
+2. Enter location(s) — accepts city names or `lat,lon` coordinates
+3. Adjust the zone name and FM/DMR toggles, then click **Save**
+4. Rebuild — the zone appears in your codeplug after the main tiered zones
+
+> Tip: States along the route must already be in your cache. If a state is missing,
+> add it to `states:` in the Config tab and rebuild first.
+
+See [Roaming Zones](roaming-zones.md) for full documentation.
+
 ## Next steps
 
 - Adjust config.yaml tiers and filters in the Config tab

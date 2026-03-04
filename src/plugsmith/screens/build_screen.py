@@ -287,6 +287,26 @@ class BuildPane(Widget):
             total_ch = sum(len(zs["channels"]) for zs in zone_specs)
             post_line(f"Zones: {len(zone_specs)}, channels: {total_ch}")
 
+            roaming_defs = config.get("roaming_zones", [])
+            if roaming_defs:
+                set_status("Building roaming zones…")
+                post_line(f"Building {len(roaming_defs)} roaming zone(s)…")
+                from plugsmith.builder.roaming import build_roaming_zones
+                used_ch = sum(len(z["channels"]) for z in zone_specs)
+                remaining = radio_profile.max_channels - used_ch
+                roaming_specs = build_roaming_zones(
+                    roaming_defs=roaming_defs,
+                    all_repeaters=repeaters,
+                    cache_dir=str(Path(config_path).parent / config.get("cache_dir", ".rb_cache")),
+                    max_channels_per_zone=radio_profile.max_channels_per_zone,
+                    channel_budget=remaining,
+                    user_agent=user_agent,
+                    post_line=post_line,
+                )
+                zone_specs.extend(roaming_specs)
+                roam_ch = sum(len(z["channels"]) for z in roaming_specs)
+                post_line(f"Roaming: {len(roaming_specs)} zone(s), {roam_ch} channels")
+
             set_status("Generating codeplug YAML…")
             post_line("Generating qdmr YAML…")
             hw_key = radio_profile.hw_settings_key
