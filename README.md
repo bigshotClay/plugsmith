@@ -26,7 +26,7 @@ plugsmith bundles a complete codeplug builder (pulls repeater data from Repeater
 - **Roaming Zones** — define a driving route or radius zone; plugsmith finds matching repeaters from cached data and generates named zones on next build
 - **First-run wizard** — guided setup on first launch
 - **Cross-platform** — macOS, Linux, Windows (WSL)
-- **Multi-mode support** — FM and DMR stable; System Fusion repeaters included as FM-analog channels on all radios; P-25, NXDN, M17, Tetra scaffolded
+- **Multi-mode support** — FM and DMR
 - **Any dmrconf-compatible radio** — Anytone, TYT, Radioddity, Baofeng, and more
 - **Generic hardware config editor** — auto-generates an editable form from any `{model}_settings` YAML block for unsupported radios
 
@@ -117,7 +117,7 @@ Any radio supported by dmrconf. Common models:
 - Radioddity GD-77, GD-73
 - Baofeng DM-1801
 
-> **Note:** Yaesu System Fusion and Icom D-STAR radios are not supported by dmrconf. plugsmith cannot write codeplugs to these radios.
+> **Note:** Icom D-STAR radios are not supported by dmrconf. plugsmith cannot write codeplugs to these radios.
 
 ## Supported Modes
 
@@ -128,12 +128,7 @@ plugsmith selects repeater modes based on your radio's hardware capabilities and
 |------|--------|-------|
 | FM Analog | ✅ Stable | Full support — analog channels with CTCSS |
 | DMR | ✅ Stable | Full support — digital channels with talkgroups |
-| System Fusion (C4FM) | ✅ Supported | C4FM/Fusion repeaters are backward-compatible FM. plugsmith includes them as FM-analog channels on all radios when `modes.fusion: true`. Note: Yaesu FT3D/FT5D radios cannot be programmed via dmrconf. |
 | D-Star | ❌ Not supported | D-STAR is not supported by dmrconf. Icom D-STAR radios cannot be programmed via plugsmith. |
-| APCO P-25 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
-| NXDN | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
-| M17 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
-| Tetra | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
 
 ## Hardware Submission
 

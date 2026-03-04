@@ -48,7 +48,7 @@ def make_channel_name(repeater: Repeater, mode: str = "FM", suffix: str = "") ->
     """Generate a short, readable channel name ≤16 chars: 'CALLSIGN CITY [suffix]'.
 
     The mode parameter is used as a suffix when no explicit suffix is given,
-    but only for non-FM modes (to disambiguate D-Star / Fusion from plain FM).
+    but only for non-FM modes (to disambiguate D-Star from plain FM).
     """
     call = repeater.callsign.upper()
     city = repeater.city.replace(" ", "")[:6]
@@ -57,38 +57,6 @@ def make_channel_name(repeater: Repeater, mode: str = "FM", suffix: str = "") ->
     if effective_suffix:
         name = f"{name} {effective_suffix}"
     return name[:CHANNEL_NAME_MAX]
-
-
-# ---------------------------------------------------------------------------
-# Mode-specific channel builders (Fusion, D-Star)
-# ---------------------------------------------------------------------------
-
-def _fusion_channels_for_state(
-    repeaters: list[Repeater],
-    max_count: Optional[int],
-) -> list[dict]:
-    """Build analog channels for Fusion repeaters.
-
-    Fusion (C4FM) repeaters are backward-compatible FM; they use ch_type="analog"
-    so the radio's AMS mode can auto-select C4FM when the repeater supports it.
-    """
-    channels: list[dict] = []
-    count = 0
-    for r in sorted(repeaters, key=lambda r: r.distance):
-        if not r.is_fusion:
-            continue
-        if max_count is not None and count >= max_count:
-            break
-        count += 1
-        channels.append({
-            "ch_type": "analog",
-            "name": make_channel_name(r, "Fusion"),
-            "rx_freq": r.frequency,
-            "tx_freq": r.input_freq,
-            "pl_tone": r.pl_tone,
-            "tsq_tone": None,
-        })
-    return channels
 
 
 # ---------------------------------------------------------------------------
@@ -164,9 +132,7 @@ def home_state_channels(
     max_fm = home_cfg.get("max_fm_per_state")
     max_dmr = home_cfg.get("max_dmr_per_state")
     max_tgs_per_rpt = home_cfg.get("dmr_talkgroups_per_repeater", 7)
-    max_fusion = home_cfg.get("max_fusion_per_state", 50)
     state_tg = state_tg_map.get(state)
-    modes = config.get("modes", {})
 
     channels: list[dict] = []
     rpts = sorted(state_repeaters, key=lambda r: r.distance)
@@ -202,9 +168,6 @@ def home_state_channels(
                     "tg_name": label,
                 })
 
-    if modes.get("fusion"):
-        channels.extend(_fusion_channels_for_state(state_repeaters, max_fusion))
-
     return channels
 
 
@@ -220,8 +183,6 @@ def adjacent_state_channels(
     max_fm = adj_cfg.get("max_fm_per_state", 30)
     max_dmr_freqs = adj_cfg.get("max_dmr_freqs_per_state", 5)
     dmr_tgs = adj_cfg.get("dmr_tgs_per_freq", 3)
-    max_fusion = adj_cfg.get("max_fusion_per_state", 10)
-    modes = config.get("modes", {})
 
     rpts = sorted(state_repeaters, key=lambda r: r.distance)
     channels: list[dict] = []
@@ -267,9 +228,6 @@ def adjacent_state_channels(
                 "tg_name": label,
             })
 
-    if modes.get("fusion"):
-        channels.extend(_fusion_channels_for_state(state_repeaters, max_fusion))
-
     return channels
 
 
@@ -284,13 +242,10 @@ def shallow_state_channels(
     sha_cfg = config.get("shallow_region", {})
     max_fm = sha_cfg.get("max_fm_freqs", 10)
     max_dmr = sha_cfg.get("max_dmr_freqs", 3)
-    max_fusion = sha_cfg.get("max_fusion_freqs", 3)
-    modes = config.get("modes", {})
 
     fm_freq_counts: Counter = Counter()
     dmr_freq_counts: Counter = Counter()
     dmr_cc_by_freq: dict[float, list[int]] = defaultdict(list)
-    fusion_freq_counts: Counter = Counter()
 
     for r in state_repeaters:
         if r.is_fm:
@@ -300,8 +255,6 @@ def shallow_state_channels(
             dmr_freq_counts[freq_key] += 1
             if r.dmr_color_code:
                 dmr_cc_by_freq[freq_key].append(r.dmr_color_code)
-        if r.is_fusion:
-            fusion_freq_counts[round(r.frequency, 4)] += 1
 
     channels: list[dict] = []
 
@@ -335,21 +288,6 @@ def shallow_state_channels(
             "tg_num": 9,
             "tg_name": "Local",
         })
-
-    if modes.get("fusion"):
-        for freq, _ in fusion_freq_counts.most_common(max_fusion):
-            key = (state, freq)
-            tx_freq = input_freq_map.get(key) or freq
-            pl_tone = ctcss_map.get(key)
-            name = f"{state} {freq:.3f} F"[:CHANNEL_NAME_MAX]
-            channels.append({
-                "ch_type": "analog",
-                "name": name,
-                "rx_freq": freq,
-                "tx_freq": tx_freq,
-                "pl_tone": pl_tone,
-                "tsq_tone": None,
-            })
 
     return channels
 
@@ -414,22 +352,18 @@ def estimate_channels_uncapped(
     tgs_per_repeater channels.  Repeaters that support both modes are
     counted for each.  Used to decide whether tier-based scaling is needed.
     """
-    modes = config.get("modes", {})
     state_fm: dict[str, int] = defaultdict(int)
     state_dmr: dict[str, int] = defaultdict(int)
-    state_fusion: dict[str, int] = defaultdict(int)
     for r in repeaters:
         if r.state_abbr in state_tiers:
             if r.is_fm:
                 state_fm[r.state_abbr] += 1
             if r.is_dmr:
                 state_dmr[r.state_abbr] += 1
-            if r.is_fusion and modes.get("fusion"):
-                state_fusion[r.state_abbr] += 1
     tgs = config.get("home_region", {}).get("dmr_talkgroups_per_repeater", 7)
     simplex = len(config.get("simplex", {}).get("channels", []))
     return simplex + sum(
-        state_fm[s] + state_dmr[s] * tgs + state_fusion[s]
+        state_fm[s] + state_dmr[s] * tgs
         for s in state_tiers
     )
 
@@ -463,14 +397,11 @@ def scale_config_to_radio(
 
     _apply("home_region",    "max_fm_per_state",        150)
     _apply("home_region",    "max_dmr_per_state",       100)
-    _apply("home_region",    "max_fusion_per_state",     50)
     _apply("adjacent_region","max_fm_per_state",         30)
     _apply("adjacent_region","max_dmr_freqs_per_state",   5)
     _apply("adjacent_region","dmr_tgs_per_freq",          3)
-    _apply("adjacent_region","max_fusion_per_state",     10)
     _apply("shallow_region", "max_fm_freqs",             10)
     _apply("shallow_region", "max_dmr_freqs",             3)
-    _apply("shallow_region", "max_fusion_freqs",          3)
 
     return config
 

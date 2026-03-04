@@ -254,11 +254,6 @@ class ConfigEditorPane(Widget):
                 yield Label("Modes", classes="section-title")
                 yield LabeledSwitch("FM analog:", "cfg-mode-fm", value=True)
                 yield LabeledSwitch("DMR digital:", "cfg-mode-dmr", value=True)
-                yield LabeledSwitch("System Fusion:", "cfg-mode-fusion", value=False)
-                yield LabeledSwitch("NXDN:", "cfg-mode-nxdn", value=False)
-                yield LabeledSwitch("P25:", "cfg-mode-p25", value=False)
-                yield LabeledSwitch("M17:", "cfg-mode-m17", value=False)
-                yield LabeledSwitch("TETRA:", "cfg-mode-tetra", value=False)
 
                 # Filters
                 yield Label("Filters", classes="section-title")
@@ -317,14 +312,11 @@ class ConfigEditorPane(Widget):
                     yield LabeledInput("Home max FM/state:", "cfg-home-max-fm", placeholder="(no cap)")
                     yield LabeledInput("Home max DMR/state:", "cfg-home-max-dmr", placeholder="(no cap)")
                     yield LabeledInput("Home TGs/repeater:", "cfg-home-tgs-per-rep", placeholder="7")
-                    yield LabeledInput("Home max Fusion/state:", "cfg-home-max-fusion", placeholder="(no cap)")
                     yield LabeledInput("Adjacent max FM/state:", "cfg-adj-max-fm", placeholder="30")
                     yield LabeledInput("Adjacent max DMR freqs:", "cfg-adj-max-dmr", placeholder="5")
                     yield LabeledInput("Adj TGs/freq:", "cfg-adj-tgs-per-freq", placeholder="3")
-                    yield LabeledInput("Adj max Fusion/state:", "cfg-adj-max-fusion", placeholder="10")
                     yield LabeledInput("Shallow max FM freqs:", "cfg-sha-max-fm", placeholder="10")
                     yield LabeledInput("Shallow max DMR freqs:", "cfg-sha-max-dmr", placeholder="3")
-                    yield LabeledInput("Shallow max Fusion:", "cfg-sha-max-fusion", placeholder="3")
 
                 # Hardware settings — dynamically populated after load
                 yield Vertical(id="hw-section-outer")
@@ -648,11 +640,6 @@ class ConfigEditorPane(Widget):
         modes = cfg.get("modes", {})
         _set_sw("cfg-mode-fm", bool(modes.get("fm", True)))
         _set_sw("cfg-mode-dmr", bool(modes.get("dmr", True)))
-        _set_sw("cfg-mode-fusion", bool(modes.get("fusion", False)))
-        _set_sw("cfg-mode-nxdn", bool(modes.get("nxdn", False)))
-        _set_sw("cfg-mode-p25", bool(modes.get("p25", False)))
-        _set_sw("cfg-mode-m17", bool(modes.get("m17", False)))
-        _set_sw("cfg-mode-tetra", bool(modes.get("tetra", False)))
 
         filt = cfg.get("filters", {})
         _set_sw("cfg-open-only", bool(filt.get("open_only", True)))
@@ -688,18 +675,15 @@ class ConfigEditorPane(Widget):
         _set("cfg-home-max-fm", s(home_r.get("max_fm_per_state")))
         _set("cfg-home-max-dmr", s(home_r.get("max_dmr_per_state")))
         _set("cfg-home-tgs-per-rep", s(home_r.get("dmr_talkgroups_per_repeater")))
-        _set("cfg-home-max-fusion", s(home_r.get("max_fusion_per_state")))
 
         adj_r = cfg.get("adjacent_region", {})
         _set("cfg-adj-max-fm", s(adj_r.get("max_fm_per_state")))
         _set("cfg-adj-max-dmr", s(adj_r.get("max_dmr_freqs_per_state")))
         _set("cfg-adj-tgs-per-freq", s(adj_r.get("dmr_tgs_per_freq")))
-        _set("cfg-adj-max-fusion", s(adj_r.get("max_fusion_per_state")))
 
         sha_r = cfg.get("shallow_region", {})
         _set("cfg-sha-max-fm", s(sha_r.get("max_fm_freqs")))
         _set("cfg-sha-max-dmr", s(sha_r.get("max_dmr_freqs")))
-        _set("cfg-sha-max-fusion", s(sha_r.get("max_fusion_freqs")))
 
     def _collect_fields(self) -> None:
         """Write form fields back into self._raw_config."""
@@ -768,11 +752,6 @@ class ConfigEditorPane(Widget):
 
         cfg.setdefault("modes", {})["fm"] = g_sw("cfg-mode-fm")
         cfg.setdefault("modes", {})["dmr"] = g_sw("cfg-mode-dmr")
-        cfg.setdefault("modes", {})["fusion"] = g_sw("cfg-mode-fusion")
-        cfg.setdefault("modes", {})["nxdn"] = g_sw("cfg-mode-nxdn")
-        cfg.setdefault("modes", {})["p25"] = g_sw("cfg-mode-p25")
-        cfg.setdefault("modes", {})["m17"] = g_sw("cfg-mode-m17")
-        cfg.setdefault("modes", {})["tetra"] = g_sw("cfg-mode-tetra")
         cfg.setdefault("filters", {})["open_only"] = g_sw("cfg-open-only")
         cfg.setdefault("filters", {})["on_air_only"] = g_sw("cfg-on-air-only")
 
@@ -822,9 +801,6 @@ class ConfigEditorPane(Widget):
         v = _opt_int(g("cfg-home-tgs-per-rep"))
         if v is not None:
             cfg.setdefault("home_region", {})["dmr_talkgroups_per_repeater"] = v
-        v = _opt_int(g("cfg-home-max-fusion"))
-        if v is not None:
-            cfg.setdefault("home_region", {})["max_fusion_per_state"] = v
         v = _opt_int(g("cfg-adj-max-fm"))
         if v is not None:
             cfg.setdefault("adjacent_region", {})["max_fm_per_state"] = v
@@ -834,18 +810,12 @@ class ConfigEditorPane(Widget):
         v = _opt_int(g("cfg-adj-tgs-per-freq"))
         if v is not None:
             cfg.setdefault("adjacent_region", {})["dmr_tgs_per_freq"] = v
-        v = _opt_int(g("cfg-adj-max-fusion"))
-        if v is not None:
-            cfg.setdefault("adjacent_region", {})["max_fusion_per_state"] = v
         v = _opt_int(g("cfg-sha-max-fm"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_fm_freqs"] = v
         v = _opt_int(g("cfg-sha-max-dmr"))
         if v is not None:
             cfg.setdefault("shallow_region", {})["max_dmr_freqs"] = v
-        v = _opt_int(g("cfg-sha-max-fusion"))
-        if v is not None:
-            cfg.setdefault("shallow_region", {})["max_fusion_freqs"] = v
 
         self._collect_hw_fields()
 

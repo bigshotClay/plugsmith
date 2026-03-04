@@ -2,7 +2,7 @@
 
 import pytest
 
-from plugsmith.builder.filters import filter_repeaters, parse_repeaters
+from plugsmith.builder.filters import filter_repeaters
 from plugsmith.builder.zones import (
     STATE_TGS_DEFAULT,
     TG_NAMES,
@@ -410,11 +410,6 @@ class TestMakeChannelNameModeSuffix:
         name = make_channel_name(r, mode="DStar")
         assert "DStar" in name or len(name) == 16  # may be truncated
 
-    def test_fusion_mode_adds_suffix(self):
-        r = make_repeater(callsign="W0ABC", city="City")
-        name = make_channel_name(r, mode="Fusion")
-        assert "Fus" in name or len(name) == 16  # truncated to Fus
-
     def test_empty_mode_no_suffix(self):
         r = make_repeater(callsign="W0ABC", city="City")
         name_no_mode = make_channel_name(r)
@@ -422,137 +417,3 @@ class TestMakeChannelNameModeSuffix:
         assert name_no_mode == name_empty
 
 
-# ---------------------------------------------------------------------------
-# filter_repeaters — scaffold modes (NXDN, P25, M17, Tetra)
-# ---------------------------------------------------------------------------
-
-from plugsmith.builder.filters import filter_repeaters
-
-
-class TestFilterRepeaterScaffoldModes:
-    def _nxdn_rpt(self):
-        return make_repeater(is_fm=False, is_nxdn=True)
-
-    def _p25_rpt(self):
-        return make_repeater(is_fm=False, is_p25=True)
-
-    def _m17_rpt(self):
-        return make_repeater(is_fm=False, is_m17=True)
-
-    def _tetra_rpt(self):
-        return make_repeater(is_fm=False, is_tetra=True)
-
-    def test_nxdn_included_when_enabled(self):
-        r = self._nxdn_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_nxdn=True,
-                                   on_air_only=False, open_only=False)
-        assert r in result
-
-    def test_nxdn_excluded_when_disabled(self):
-        r = self._nxdn_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_nxdn=False,
-                                   on_air_only=False, open_only=False)
-        assert r not in result
-
-    def test_p25_included_when_enabled(self):
-        r = self._p25_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_p25=True,
-                                   on_air_only=False, open_only=False)
-        assert r in result
-
-    def test_p25_excluded_when_disabled(self):
-        r = self._p25_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_p25=False,
-                                   on_air_only=False, open_only=False)
-        assert r not in result
-
-    def test_m17_included_when_enabled(self):
-        r = self._m17_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_m17=True,
-                                   on_air_only=False, open_only=False)
-        assert r in result
-
-    def test_m17_excluded_when_disabled(self):
-        r = self._m17_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_m17=False,
-                                   on_air_only=False, open_only=False)
-        assert r not in result
-
-    def test_tetra_included_when_enabled(self):
-        r = self._tetra_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_tetra=True,
-                                   on_air_only=False, open_only=False)
-        assert r in result
-
-    def test_tetra_excluded_when_disabled(self):
-        r = self._tetra_rpt()
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_tetra=False,
-                                   on_air_only=False, open_only=False)
-        assert r not in result
-
-
-# ---------------------------------------------------------------------------
-# parse_repeaters — M17 and Tetra field parsing
-# ---------------------------------------------------------------------------
-
-from plugsmith.builder.filters import parse_repeaters
-
-
-class TestParseRepeaterM17Tetra:
-    def _raw(self, **overrides):
-        base = {
-            "Frequency": "146.520",
-            "Input Freq": "147.120",
-            "Callsign": "W0ABC",
-            "State": "Missouri",
-            "Nearest City": "Test",
-            "County": "County",
-            "Lat": "37.2",
-            "Long": "-93.3",
-            "Use": "OPEN",
-            "Operational Status": "On-air",
-            "FM Analog": "No",
-            "DMR": "No",
-            "D-Star": "No",
-            "System Fusion": "No",
-            "NXDN": "No",
-            "APCO P-25": "No",
-            "M17": "No",
-            "Tetra": "No",
-        }
-        base.update(overrides)
-        return base
-
-    def test_is_m17_set_from_yes(self):
-        rpts = parse_repeaters([self._raw(**{"M17": "Yes"})])
-        assert len(rpts) == 1
-        assert rpts[0].is_m17 is True
-
-    def test_is_m17_false_by_default(self):
-        rpts = parse_repeaters([self._raw()])
-        assert rpts[0].is_m17 is False
-
-    def test_is_tetra_set_from_yes(self):
-        rpts = parse_repeaters([self._raw(**{"Tetra": "Yes"})])
-        assert len(rpts) == 1
-        assert rpts[0].is_tetra is True
-
-    def test_is_tetra_false_by_default(self):
-        rpts = parse_repeaters([self._raw()])
-        assert rpts[0].is_tetra is False
-
-    def test_m17_can_captured(self):
-        rpts = parse_repeaters([self._raw(**{"M17": "Yes", "M17 CAN": "9"})])
-        assert rpts[0].m17_can == "9"
-
-    def test_p25_nac_captured(self):
-        rpts = parse_repeaters([self._raw(**{"APCO P-25": "Yes", "P-25 NAC": "293"})])
-        assert rpts[0].p25_nac == "293"
-
-    def test_tetra_mcc_captured(self):
-        rpts = parse_repeaters([self._raw(**{"Tetra": "Yes", "Tetra MCC": "310"})])
-        assert rpts[0].tetra_mcc == "310"
-
-    def test_tetra_mnc_captured(self):
-        rpts = parse_repeaters([self._raw(**{"Tetra": "Yes", "Tetra MNC": "410"})])
-        assert rpts[0].tetra_mnc == "410"

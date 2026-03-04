@@ -16,7 +16,7 @@ class TestValidateModesPasses:
         validate_modes(config, RADIO_PROFILES["md380"])  # no exception
 
     def test_all_disabled_modes_pass_any_radio(self):
-        config = {"modes": {"fm": False, "dmr": False, "dstar": False, "fusion": False}}
+        config = {"modes": {"fm": False, "dmr": False, "dstar": False}}
         validate_modes(config, RADIO_PROFILES["md380"])  # no exception
 
     def test_empty_modes_passes(self):
@@ -38,29 +38,19 @@ class TestValidateModesRaises:
         with pytest.raises(ValueError, match="dstar"):
             validate_modes(config, RADIO_PROFILES["d878uv2"])
 
-    def test_fusion_on_md380_raises(self):
-        config = {"modes": {"fm": True, "dmr": True, "fusion": True}}
-        with pytest.raises(ValueError, match="fusion"):
-            validate_modes(config, RADIO_PROFILES["md380"])
-
-    def test_fusion_on_d878uv2_raises(self):
-        config = {"modes": {"fusion": True}}
-        with pytest.raises(ValueError, match="fusion"):
-            validate_modes(config, RADIO_PROFILES["d878uv2"])
-
     def test_dstar_on_gd77_raises(self):
         config = {"modes": {"dstar": True}}
         with pytest.raises(ValueError, match="dstar"):
             validate_modes(config, RADIO_PROFILES["gd77"])
 
     def test_error_message_contains_radio_key(self):
-        config = {"modes": {"fusion": True}}
+        config = {"modes": {"dstar": True}}
         with pytest.raises(ValueError) as exc_info:
             validate_modes(config, RADIO_PROFILES["d878uv2"])
         assert "d878uv2" in str(exc_info.value)
 
     def test_error_message_contains_supported_modes(self):
-        config = {"modes": {"fusion": True}}
+        config = {"modes": {"dstar": True}}
         with pytest.raises(ValueError) as exc_info:
             validate_modes(config, RADIO_PROFILES["d878uv2"])
         assert "fm" in str(exc_info.value)
@@ -91,9 +81,6 @@ class TestRadioProfileSupportedModesField:
     def test_default_profile_has_fm_dmr(self):
         assert "fm" in DEFAULT_RADIO_PROFILE.supported_modes
         assert "dmr" in DEFAULT_RADIO_PROFILE.supported_modes
-
-    def test_anytone_does_not_have_fusion(self):
-        assert "fusion" not in RADIO_PROFILES["d878uv2"].supported_modes
 
     def test_anytone_does_not_have_dstar(self):
         assert "dstar" not in RADIO_PROFILES["d878uv2"].supported_modes

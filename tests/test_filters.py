@@ -34,7 +34,6 @@ def _raw(
     lon: float = -92.0,
     fm: str = "Yes",
     dmr: str = "No",
-    fusion: str = "No",
     use: str = "OPEN",
     status: str = "On-air",
     pl: str = "100.0",
@@ -48,11 +47,6 @@ def _raw(
         "Long": str(lon),
         "FM Analog": fm,
         "DMR": dmr,
-        "System Fusion": fusion,
-        "NXDN": "No",
-        "APCO P-25": "No",
-        "M17": "No",
-        "Tetra": "No",
         "DMR Color Code": "",
         "DMR ID": "",
         "PL": pl,
@@ -74,10 +68,6 @@ def _make_repeater(
     lon: float = -92.0,
     is_fm: bool = True,
     is_dmr: bool = False,
-    is_nxdn: bool = False,
-    is_p25: bool = False,
-    is_m17: bool = False,
-    is_tetra: bool = False,
     pl_tone: float | None = 100.0,
     use: str = "OPEN",
     status: str = "On-air",
@@ -100,13 +90,8 @@ def _make_repeater(
         status=status,
         is_fm=is_fm,
         is_dmr=is_dmr,
-        is_fusion=False,
-        is_nxdn=is_nxdn,
-        is_p25=is_p25,
         dmr_color_code=None,
         dmr_id=None,
-        is_m17=is_m17,
-        is_tetra=is_tetra,
         distance=distance,
     )
 
@@ -209,8 +194,7 @@ class TestParseRepeaters:
         """An entry with non-numeric frequency should be skipped gracefully."""
         bad = {"Callsign": "W0BAD", "Frequency": "not-a-number", "Input Freq": "147.0",
                "State": "Missouri", "Lat": "38.5", "Long": "-92.0",
-               "FM Analog": "Yes", "DMR": "No", "System Fusion": "No",
-               "NXDN": "No", "APCO P-25": "No", "M17": "No", "Tetra": "No",
+               "FM Analog": "Yes", "DMR": "No",
                "Use": "OPEN", "Operational Status": "On-air", "PL": "", "TSQ": ""}
         result = parse_repeaters([bad])
         assert result == []
@@ -240,20 +224,11 @@ class TestParseRepeaters:
         assert result[0].is_dmr is True
         assert result[0].dmr_color_code == 3
 
-    def test_parses_all_mode_flags(self):
-        row = _raw()
-        row["System Fusion"] = "Yes"
-        row["NXDN"] = "Yes"
-        row["APCO P-25"] = "Yes"
-        row["M17"] = "Yes"
-        row["Tetra"] = "Yes"
+    def test_parses_dmr_flag(self):
+        row = _raw(dmr="Yes")
         result = parse_repeaters([row])
         r = result[0]
-        assert r.is_fusion is True
-        assert r.is_nxdn is True
-        assert r.is_p25 is True
-        assert r.is_m17 is True
-        assert r.is_tetra is True
+        assert r.is_dmr is True
 
 
 # ---------------------------------------------------------------------------
@@ -292,26 +267,6 @@ class TestFilterRepeaters:
         result = filter_repeaters([r], include_fm=True)
         # No FM, no DMR → excluded
         assert result == []
-
-    def test_includes_nxdn_when_enabled(self):
-        r = _make_repeater(is_fm=False, is_nxdn=True)
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_nxdn=True)
-        assert len(result) == 1
-
-    def test_includes_p25_when_enabled(self):
-        r = _make_repeater(is_fm=False, is_p25=True)
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_p25=True)
-        assert len(result) == 1
-
-    def test_includes_m17_when_enabled(self):
-        r = _make_repeater(is_fm=False, is_m17=True)
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_m17=True)
-        assert len(result) == 1
-
-    def test_includes_tetra_when_enabled(self):
-        r = _make_repeater(is_fm=False, is_tetra=True)
-        result = filter_repeaters([r], include_fm=False, include_dmr=False, include_tetra=True)
-        assert len(result) == 1
 
     def test_excludes_out_of_band_frequency(self):
         r = _make_repeater(frequency=220.0)  # not 2m or 70cm

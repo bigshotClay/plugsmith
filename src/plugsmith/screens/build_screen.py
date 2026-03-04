@@ -253,7 +253,6 @@ class BuildPane(Widget):
                 repeaters,
                 include_fm=config["modes"]["fm"],
                 include_dmr=config["modes"]["dmr"],
-                include_fusion=config["modes"].get("fusion", False),
                 open_only=config["filters"]["open_only"],
                 on_air_only=config["filters"]["on_air_only"],
                 bands=config["bands"],

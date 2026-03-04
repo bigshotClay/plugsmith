@@ -23,17 +23,8 @@ class Repeater:
     status: str            # On-air, Off-air, Testing
     is_fm: bool
     is_dmr: bool
-    is_fusion: bool
-    is_nxdn: bool
-    is_p25: bool
     dmr_color_code: Optional[int]
     dmr_id: Optional[str]
-    is_m17: bool = False
-    is_tetra: bool = False
-    m17_can: Optional[str] = None    # M17 Channel Access Number
-    p25_nac: Optional[str] = None    # APCO P-25 Network Access Code
-    tetra_mcc: Optional[str] = None  # Tetra MCC
-    tetra_mnc: Optional[str] = None  # Tetra MNC
     landmark: str = ""
     distance: float = 0.0  # calculated distance from reference point
 

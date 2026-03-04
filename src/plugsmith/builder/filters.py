@@ -64,11 +64,6 @@ def parse_repeaters(raw_data: list[dict]) -> list[Repeater]:
 
             is_fm = r.get("FM Analog", "No") == "Yes"
             is_dmr = r.get("DMR", "No") == "Yes"
-            is_fusion = r.get("System Fusion", "No") == "Yes"
-            is_nxdn = r.get("NXDN", "No") == "Yes"
-            is_p25 = r.get("APCO P-25", "No") == "Yes"
-            is_m17 = r.get("M17", "No") == "Yes"
-            is_tetra = r.get("Tetra", "No") == "Yes"
 
             cc_str = r.get("DMR Color Code", "")
             dmr_cc = int(cc_str) if cc_str and str(cc_str).isdigit() else None
@@ -98,17 +93,8 @@ def parse_repeaters(raw_data: list[dict]) -> list[Repeater]:
                 status=_s(r.get("Operational Status")),
                 is_fm=is_fm,
                 is_dmr=is_dmr,
-                is_fusion=is_fusion,
-                is_nxdn=is_nxdn,
-                is_p25=is_p25,
                 dmr_color_code=dmr_cc,
                 dmr_id=dmr_id,
-                is_m17=is_m17,
-                is_tetra=is_tetra,
-                m17_can=_s(r.get("M17 CAN")) or None,
-                p25_nac=_s(r.get("P-25 NAC")) or None,
-                tetra_mcc=_s(r.get("Tetra MCC")) or None,
-                tetra_mnc=_s(r.get("Tetra MNC")) or None,
                 landmark=_s(r.get("Landmark")),
             )
             repeaters.append(rpt)
@@ -134,11 +120,6 @@ def filter_repeaters(
     repeaters: list[Repeater],
     include_fm: bool = True,
     include_dmr: bool = True,
-    include_fusion: bool = False,
-    include_nxdn: bool = False,
-    include_p25: bool = False,
-    include_m17: bool = False,
-    include_tetra: bool = False,
     open_only: bool = True,
     on_air_only: bool = True,
     bands: Optional[list[str]] = None,
@@ -157,11 +138,6 @@ def filter_repeaters(
         has_wanted = (
             (include_fm and r.is_fm)
             or (include_dmr and r.is_dmr)
-            or (include_fusion and r.is_fusion)
-            or (include_nxdn and r.is_nxdn)
-            or (include_p25 and r.is_p25)
-            or (include_m17 and r.is_m17)
-            or (include_tetra and r.is_tetra)
         )
         if not has_wanted:
             continue
