@@ -53,8 +53,8 @@ Key fields:
 | `bands` | List of bands: `2m`, `70cm` |
 | `filters.open_only` | Only include OPEN repeaters |
 | `filters.on_air_only` | Only include On-air repeaters |
-| `rate_limit_seconds` | Seconds between RepeaterBook API requests (min 5.0) |
-| `cache_dir` | Directory for RepeaterBook JSON cache files |
+| `rate_limit_seconds` | Seconds between RepeaterBook API requests (default 2.0 — do not lower below 2.0) |
+| `cache_dir` | Directory for cache files (RepeaterBook, TG registry, RadioID) |
 
 ### roaming_zones
 
@@ -77,6 +77,35 @@ named zone on the next build, appended after the main tiered zones.
 
 Location strings accept city names (`"Chicago, IL"`) or raw coordinates (`"41.85,-87.65"`).
 See [docs/roaming-zones.md](roaming-zones.md) for full documentation.
+
+### talkgroups
+
+Controls DMR talkgroup fetching from external registries.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `networks` | list | `[brandmeister, tgif]` | Registries to fetch. `brandmeister` — BrandMeister API v2 (no auth, excellent USA coverage). `tgif` — TGIF Network (no auth, ~2,925 TGs). |
+| `fill_contacts` | bool | `true` | Fill the radio's DMR contact list up to its hardware limit (e.g. 10,000 on AT-D878UVII) with named TGs from the registry. In-use TGs always come first. |
+| `per_repeater_lookup` | bool | `true` | Use RadioID's per-repeater static TS1/TS2 TG assignments for home-tier DMR channel generation. Falls back to hardcoded BrandMeister defaults when RadioID has no record for a repeater. |
+
+Example (all defaults — no action needed unless you want to disable something):
+```yaml
+talkgroups:
+  networks:
+    - brandmeister
+    - tgif
+  fill_contacts: true
+  per_repeater_lookup: true
+```
+
+To disable TG fetching entirely and restore pre-0.3.0 behavior:
+```yaml
+talkgroups:
+  fill_contacts: false
+  per_repeater_lookup: false
+```
+
+**Cache:** TG registry files are cached for 7 days in `cache_dir`. Use the **Clear Cache** button in the Build tab to force a refresh.
 
 ### anytone_settings
 

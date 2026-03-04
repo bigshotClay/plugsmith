@@ -50,11 +50,10 @@ Click **Save Config**.
 Go to the **Build** tab (`Ctrl+B`):
 1. Confirm the config.yaml path is set
 2. Click **▶ Build Codeplug**
-3. Watch the output — it will fetch all 50 states (cached after first run)
+3. Watch the output — it will fetch all 50 states from RepeaterBook, then TG data from BrandMeister, TGIF, and RadioID
 4. When complete: "✓ Done: 4000 channels, 71 zones"
 
-> Tip: The first full build takes a few minutes (fetches 50 states from RepeaterBook).
-> Subsequent builds are fast — cached data is reused for 12 hours.
+> Tip: The first full build takes a few minutes. After that, everything is cached — RepeaterBook data for 30 days, TG data for 7 days. Use **Clear Cache** to force a fresh fetch.
 
 ## Step 6: Back up your radio (Radio tab)
 

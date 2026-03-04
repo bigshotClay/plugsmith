@@ -53,8 +53,8 @@ plugsmith automatically waits 90 seconds and retries.
 **What to do:** Wait — the build will continue automatically.
 
 **To avoid in the future:**
-- Increase `rate_limit_seconds` in config.yaml (default 5.0 — do not lower it)
-- Cache stays valid for 12 hours; subsequent builds skip cached states
+- Increase `rate_limit_seconds` in config.yaml (default 2.0 — do not lower it)
+- RepeaterBook cache stays valid for 30 days; subsequent builds skip cached states entirely
 
 ---
 
