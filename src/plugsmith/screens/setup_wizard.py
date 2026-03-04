@@ -156,10 +156,10 @@ class SetupWizardScreen(ModalScreen[bool]):
                     yield Static("", id="wiz-summary")
 
             with Horizontal(classes="nav-row"):
+                yield Button("Cancel", id="wiz-skip", variant="default")
                 yield Button("Back", id="wiz-back", variant="default")
                 yield Button("Next →", id="wiz-next", variant="primary")
                 yield Button("Save & Launch", id="wiz-save", variant="success")
-                yield Button("Skip", id="wiz-skip", variant="default")
 
     def on_mount(self) -> None:
         self._update_nav()
@@ -185,8 +185,10 @@ class SetupWizardScreen(ModalScreen[bool]):
     def _next_step(self) -> None:
         if self._step == 0:
             path = self.query_one("#wiz-config-path", Input).value.strip()
-            if path:
-                self._config_path = path
+            if not path:
+                self.notify("Please select or create a config.yaml first.", severity="warning")
+                return
+            self._config_path = path
         elif self._step == 1:
             self._device = self.query_one("#wiz-device", Input).value.strip()
             val = self.query_one("#wiz-radio-model", Select).value
@@ -264,18 +266,22 @@ class SetupWizardScreen(ModalScreen[bool]):
     def _set_config_path(self, path: object) -> None:
         if path:
             self.query_one("#wiz-config-path", Input).value = str(path)
+            self._config_path = str(path)
+            self._step = 1
+            self._update_nav()
 
     @on(Button.Pressed, "#wiz-create-config")
     def _create_config(self) -> None:
         from plugsmith.builder.build_config import write_default_config
-        from plugsmith.screens.modals import FilePickerModal
 
-        # Default to home directory
         default_path = Path.home() / "codeplug" / "config.yaml"
         default_path.parent.mkdir(parents=True, exist_ok=True)
         write_default_config(str(default_path))
         self.query_one("#wiz-config-path", Input).value = str(default_path)
+        self._config_path = str(default_path)
         self.notify(f"Created: {default_path}", severity="information")
+        self._step = 1
+        self._update_nav()
 
     @on(Button.Pressed, "#wiz-save")
     def _save_and_launch(self) -> None:

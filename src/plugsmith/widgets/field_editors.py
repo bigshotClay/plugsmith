@@ -93,20 +93,19 @@ class LabeledSwitch(Widget):
         value: bool = False,
         **kwargs: object,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(id=switch_id, **kwargs)
         self._label = label
-        self._switch_id = switch_id
         self._value = value
 
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label(self._label)
-            yield Switch(value=self._value, id=self._switch_id)
+            yield Switch(value=self._value)
 
     @property
     def value(self) -> bool:
-        return self.query_one(f"#{self._switch_id}", Switch).value
+        return self.query_one(Switch).value
 
     @value.setter
     def value(self, val: bool) -> None:
-        self.query_one(f"#{self._switch_id}", Switch).value = val
+        self.query_one(Switch).value = val
