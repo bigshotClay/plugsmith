@@ -26,6 +26,7 @@ class PlugsmithConfig:
     backup_dir: str = "backups"   # relative to codeplug_config dir, or absolute
     init_codeplug: bool = True    # pass --init-codeplug on write
     last_tab: str = "tab-dashboard"
+    hw_submitted_firmware: str = ""  # firmware version recorded at last hw config submission
 
     def is_complete(self) -> bool:
         """True when enough settings are present to run without the setup wizard."""

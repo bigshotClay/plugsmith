@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from textual.message import Message
-from textual.worker import work
+from textual import work
 
 
 class SubprocessRunner:

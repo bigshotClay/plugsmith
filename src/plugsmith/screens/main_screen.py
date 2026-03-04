@@ -5,7 +5,8 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Footer, Header, TabbedContent, TabPane
+from textual import on
+from textual.widgets import Button, Footer, Header, Static, TabbedContent, TabPane
 
 from plugsmith.widgets.status_bar import StatusBar
 from plugsmith.screens.build_screen import BuildPane
@@ -42,6 +43,14 @@ class DashboardPane(TabPane):
     DashboardPane .quick-actions Button {
         margin-right: 1;
     }
+    #dash-hw-notice {
+        display: none;
+        margin-top: 1;
+    }
+    #dash-btn-hw-submit {
+        display: none;
+        margin-top: 1;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -70,6 +79,8 @@ class DashboardPane(TabPane):
                 yield Button("▶ Build", id="dash-btn-build", variant="primary")
                 yield Button("Write to Radio", id="dash-btn-radio", variant="warning")
                 yield Button("Edit Config", id="dash-btn-config", variant="default")
+            yield Static("", id="dash-hw-notice", markup=True)
+            yield Button("Submit Hardware Config", id="dash-btn-hw-submit", variant="primary")
 
     def on_mount(self) -> None:
         self.refresh_stats()
@@ -106,6 +117,49 @@ class DashboardPane(TabPane):
                     self.query_one("#dash-zones").update(str(n_zones))
             except Exception:
                 pass
+
+        from plugsmith.hw_submit import is_submission_needed
+        from plugsmith.tool_discovery import RADIO_PROFILES, DEFAULT_RADIO_PROFILE
+        needs = is_submission_needed(cfg.radio_model, cfg.hw_submitted_firmware)
+        self.query_one("#dash-hw-notice", Static).display = needs
+        self.query_one("#dash-btn-hw-submit", Button).display = needs
+        if needs:
+            profile = RADIO_PROFILES.get(cfg.radio_model, DEFAULT_RADIO_PROFILE)
+            self.query_one("#dash-hw-notice", Static).update(
+                f"[yellow]⚠ {profile.display_name} is not fully supported yet. "
+                "Submit your hardware config to help improve plugsmith.[/yellow]"
+            )
+
+    @on(Button.Pressed, "#dash-btn-hw-submit")
+    def _open_hw_submit(self) -> None:
+        from plugsmith.config import load_app_config
+        cfg = load_app_config()
+        hw_yaml = ""
+        if cfg.codeplug_config_path and cfg.codeplug_config_path.exists():
+            try:
+                import yaml
+                from plugsmith.builder.build_config import load_config
+                raw = load_config(str(cfg.codeplug_config_path))
+                from plugsmith.tool_discovery import RADIO_PROFILES, DEFAULT_RADIO_PROFILE
+                profile = RADIO_PROFILES.get(cfg.radio_model, DEFAULT_RADIO_PROFILE)
+                hw_key = profile.hw_settings_key or f"{cfg.radio_model}_settings"
+                hw_block = raw.get(hw_key, {})
+                hw_yaml = yaml.dump(hw_block) if hw_block else ""
+            except Exception:
+                pass
+        from plugsmith.screens.hw_submit_modal import HardwareSubmitModal
+        self.app.push_screen(
+            HardwareSubmitModal(cfg.radio_model, hw_settings_yaml=hw_yaml),
+            callback=self._on_hw_submit_result,
+        )
+
+    def _on_hw_submit_result(self, firmware: str | None) -> None:
+        if firmware:
+            from plugsmith.config import load_app_config
+            cfg = load_app_config()
+            cfg.hw_submitted_firmware = firmware
+            cfg.save()
+            self.refresh_stats()
 
 
 class MainScreen(Screen):

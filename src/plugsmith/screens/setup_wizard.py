@@ -205,6 +205,23 @@ class SetupWizardScreen(ModalScreen[bool]):
         cfg.device = self._device
         cfg.radio_model = self._radio_model
         cfg.save()
+
+        from plugsmith.hw_submit import is_submission_needed
+        if is_submission_needed(self._radio_model, cfg.hw_submitted_firmware):
+            from plugsmith.screens.hw_submit_modal import HardwareSubmitModal
+            self.app.push_screen(
+                HardwareSubmitModal(self._radio_model),
+                callback=self._on_hw_submit_result,
+            )
+        else:
+            self.dismiss(True)
+
+    def _on_hw_submit_result(self, firmware: str | None) -> None:
+        if firmware:
+            from plugsmith.config import load_app_config
+            cfg = load_app_config()
+            cfg.hw_submitted_firmware = firmware
+            cfg.save()
         self.dismiss(True)
 
     @on(Button.Pressed, "#wiz-skip")
