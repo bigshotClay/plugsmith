@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plugsmith"
+version = "0.1.0"
+description = "Terminal UI for managing DMR radio codeplugs with dmrconf"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["dmr", "radio", "ham", "tui", "codeplug", "dmrconf", "amateur-radio"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Topic :: Communications :: Ham Radio",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "textual>=0.70.0",
+    "tomli-w>=1.0.0",
+    "platformdirs>=4.0.0",
+    "pyyaml>=6.0",
+    "requests>=2.31.0",
+    "geopy>=2.4.0",
+]
+
+[project.optional-dependencies]
+dev = ["textual-dev>=1.0.0", "pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+plugsmith = "plugsmith.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plugsmith"]
