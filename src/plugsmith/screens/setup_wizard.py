@@ -32,8 +32,14 @@ class SetupWizardScreen(ModalScreen[bool]):
         border: thick $primary;
         padding: 2 3;
         width: 70;
+        height: 32;
+    }
+    SetupWizardScreen #wizard-switcher {
+        height: 1fr;
+    }
+    SetupWizardScreen #wizard-switcher > Vertical {
         height: auto;
-        min-height: 20;
+        overflow-y: auto;
     }
     SetupWizardScreen .wizard-title {
         text-style: bold;
