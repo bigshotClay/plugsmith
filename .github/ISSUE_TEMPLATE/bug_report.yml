@@ -1,0 +1,97 @@
+name: Bug Report
+description: Something isn't working right? Tell us what happened.
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Fill in as much as you can —
+        even partial info helps us track down the problem.
+
+  - type: dropdown
+    id: which-tab
+    attributes:
+      label: Which part of plugsmith had the problem?
+      description: Pick the tab or area where the issue happened.
+      options:
+        - Setup wizard (first launch)
+        - Dashboard tab
+        - Build tab
+        - Radio tab (write/read/verify/detect)
+        - Config tab
+        - The app crashed or wouldn't open
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what went wrong. What did you see? What did you expect to happen?
+      placeholder: |
+        Example: I clicked "Write to Radio" and confirmed, but the log showed
+        "ERROR: timeout" and the radio showed a blank screen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (if you can)
+      description: Optional — if you can repeat the problem, list the steps here.
+      placeholder: |
+        1. Click "Radio" tab
+        2. Click "Write to Radio"
+        3. Confirm in the dialog
+        4. See error in log
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: What operating system are you using?
+      options:
+        - macOS
+        - Linux
+        - Windows (WSL)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: plugsmith-version
+    attributes:
+      label: plugsmith version
+      description: Run `plugsmith --version` to find this.
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: radio-model
+    attributes:
+      label: Radio model (if relevant)
+      description: What radio were you trying to use?
+      placeholder: "e.g. Anytone AT-D878UVII"
+
+  - type: textarea
+    id: log-output
+    attributes:
+      label: Output log contents (if available)
+      description: |
+        If there was text in the output log area, paste it here.
+        Click "Clear" first, repeat the action, then copy all the text.
+      render: text
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and didn't find my problem
+          required: true
+        - label: I'm using the latest version of plugsmith
+          required: false
