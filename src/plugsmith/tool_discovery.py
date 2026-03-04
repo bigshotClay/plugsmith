@@ -28,24 +28,39 @@ class RadioProfile:
     max_channels_per_zone: int      # channels per zone
     hw_family: str                  # "anytone" | "tyt" | "radioddity" | "generic"
     hw_settings_key: Optional[str]  # config.yaml key for hw block, e.g. "anytone_settings"
+    supported_modes: frozenset      # frozenset of mode strings this radio can physically do
 
+
+_FM_DMR = frozenset({"fm", "dmr"})
+_FM_DMR_FUSION = frozenset({"fm", "dmr", "fusion"})
+_FM_DSTAR = frozenset({"fm", "dstar"})
 
 RADIO_PROFILES: dict[str, RadioProfile] = {
-    "d878uv2":  RadioProfile("d878uv2",  "AT-D878UVII (AnyTone)", 4000, 250, 160, "anytone",    "anytone_settings"),
-    "d878uv":   RadioProfile("d878uv",   "AT-D878UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings"),
-    "d868uv":   RadioProfile("d868uv",   "AT-D868UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings"),
-    "d578uv":   RadioProfile("d578uv",   "AT-D578UV (AnyTone)",   3000, 250, 160, "anytone",    "anytone_settings"),
-    "uv390":    RadioProfile("uv390",    "MD-UV390 (TYT)",         3000, 250, 160, "tyt",        None),
-    "md380":    RadioProfile("md380",    "MD-380 (TYT)",           1000, 250, 160, "tyt",        None),
-    "md9600":   RadioProfile("md9600",   "MD-9600 (TYT)",          3000, 250, 160, "tyt",        None),
-    "gd77":     RadioProfile("gd77",     "GD-77 (Radioddity)",     1024, 250,  80, "radioddity", None),
-    "gd77s":    RadioProfile("gd77s",    "GD-77S (Radioddity)",    1024, 250,  80, "radioddity", None),
-    "d52uv":    RadioProfile("d52uv",    "RD-5R (Baofeng)",        1024, 250,  16, "generic",    None),
-    "dr1801uv": RadioProfile("dr1801uv", "DR-1801UV (Alinco)",     1000, 250, 160, "generic",    None),
+    # AnyTone — FM + DMR only
+    "d878uv2":  RadioProfile("d878uv2",  "AT-D878UVII (AnyTone)", 4000, 250, 160, "anytone",    "anytone_settings", _FM_DMR),
+    "d878uv":   RadioProfile("d878uv",   "AT-D878UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings", _FM_DMR),
+    "d868uv":   RadioProfile("d868uv",   "AT-D868UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings", _FM_DMR),
+    "d578uv":   RadioProfile("d578uv",   "AT-D578UV (AnyTone)",   3000, 250, 160, "anytone",    "anytone_settings", _FM_DMR),
+    # TYT — FM + DMR
+    "uv390":    RadioProfile("uv390",    "MD-UV390 (TYT)",         3000, 250, 160, "tyt",        None, _FM_DMR),
+    "md380":    RadioProfile("md380",    "MD-380 (TYT)",           1000, 250, 160, "tyt",        None, _FM_DMR),
+    "md9600":   RadioProfile("md9600",   "MD-9600 (TYT)",          3000, 250, 160, "tyt",        None, _FM_DMR),
+    # Radioddity — FM + DMR
+    "gd77":     RadioProfile("gd77",     "GD-77 (Radioddity)",     1024, 250,  80, "radioddity", None, _FM_DMR),
+    "gd77s":    RadioProfile("gd77s",    "GD-77S (Radioddity)",    1024, 250,  80, "radioddity", None, _FM_DMR),
+    # Generic / Baofeng / Alinco — FM + DMR
+    "d52uv":    RadioProfile("d52uv",    "RD-5R (Baofeng)",        1024, 250,  16, "generic",    None, _FM_DMR),
+    "dr1801uv": RadioProfile("dr1801uv", "DR-1801UV (Alinco)",     1000, 250, 160, "generic",    None, _FM_DMR),
+    # Yaesu — FM + DMR + Fusion (C4FM)
+    "ft3d":     RadioProfile("ft3d",     "FT3D (Yaesu)",           900,  100, 100, "yaesu",      None, _FM_DMR_FUSION),
+    "ft5d":     RadioProfile("ft5d",     "FT5D (Yaesu)",           900,  100, 100, "yaesu",      None, _FM_DMR_FUSION),
+    # Icom — FM + D-Star
+    "id51":     RadioProfile("id51",     "ID-51 (Icom)",           1000, 100, 100, "icom",       None, _FM_DSTAR),
+    "id52":     RadioProfile("id52",     "ID-52 (Icom)",           1000, 100, 100, "icom",       None, _FM_DSTAR),
 }
 
 DEFAULT_RADIO_PROFILE = RadioProfile(
-    "generic", "Generic DMR Radio", 4000, 250, 160, "generic", None
+    "generic", "Generic DMR Radio", 4000, 250, 160, "generic", None, _FM_DMR
 )
 
 

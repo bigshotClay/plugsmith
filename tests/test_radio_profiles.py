@@ -19,6 +19,7 @@ class TestRadioProfileDataclass:
             max_channels_per_zone=50,
             hw_family="generic",
             hw_settings_key=None,
+            supported_modes=frozenset({"fm", "dmr"}),
         )
         assert p.key == "test"
         assert p.display_name == "Test Radio"
@@ -27,10 +28,16 @@ class TestRadioProfileDataclass:
         assert p.max_channels_per_zone == 50
         assert p.hw_family == "generic"
         assert p.hw_settings_key is None
+        assert p.supported_modes == frozenset({"fm", "dmr"})
 
     def test_hw_settings_key_can_be_string(self):
-        p = RadioProfile("k", "Name", 4000, 250, 160, "anytone", "anytone_settings")
+        p = RadioProfile("k", "Name", 4000, 250, 160, "anytone", "anytone_settings",
+                         frozenset({"fm", "dmr"}))
         assert p.hw_settings_key == "anytone_settings"
+
+    def test_supported_modes_is_frozenset(self):
+        p = RadioProfile("k", "Name", 1000, 100, 50, "generic", None, frozenset({"fm"}))
+        assert isinstance(p.supported_modes, frozenset)
 
 
 class TestRadioProfilesDict:

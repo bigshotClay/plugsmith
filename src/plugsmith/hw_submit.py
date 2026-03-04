@@ -1,12 +1,14 @@
 """Hardware config submission to GitHub Issues."""
 from __future__ import annotations
+import os
 import textwrap
 import requests
 
-# Maintainer: create a fine-grained PAT with issues:write on this repo only.
-# Rotate at https://github.com/settings/tokens if compromised.
-GITHUB_REPO = "your-org/plugsmith"   # update before shipping
-GITHUB_ISSUES_TOKEN = ""             # set before shipping
+# Fine-grained PAT stored as the PAT_TOKEN GitHub Actions secret.
+# At release time the CI workflow injects it via the PAT_TOKEN environment
+# variable.  Locally it falls back to "" (submission is silently skipped).
+GITHUB_REPO = "bigshotClay/plugsmith"
+GITHUB_ISSUES_TOKEN: str = os.environ.get("PAT_TOKEN", "")
 
 _ISSUES_URL = f"https://api.github.com/repos/{GITHUB_REPO}/issues"
 _LABEL = "hw-config-submission"

@@ -101,6 +101,12 @@ def generate_codeplug_yaml(
                     round(ch["tx_freq"], 4),
                     ch.get("pl_tone"),
                 )
+            elif ch["ch_type"] == "dstar":
+                dedup_key = (
+                    "dstar",
+                    round(ch["rx_freq"], 4),
+                    round(ch["tx_freq"], 4),
+                )
             else:
                 dedup_key = (
                     "d",
@@ -133,6 +139,22 @@ def generate_codeplug_yaml(
                         entry["analog"]["txTone"] = {"ctcss": ch["pl_tone"]}
                     if ch.get("tsq_tone"):
                         entry["analog"]["rxTone"] = {"ctcss": ch["tsq_tone"]}
+                elif ch["ch_type"] == "dstar":
+                    # NOTE: qdmr dstar: channel format based on spec v0.12.0.
+                    # Not verified against real Icom hardware + dmrconf.
+                    # Fallback: treat as analog: if dstar: proves unsupported.
+                    entry = {
+                        "dstar": {
+                            "id": ch_id,
+                            "name": ch["name"],
+                            "rxFrequency": ch["rx_freq"],
+                            "txFrequency": ch["tx_freq"],
+                            "power": "High",
+                            "timeout": 180,
+                            "rxOnly": False,
+                            "admit": "Always",
+                        }
+                    }
                 else:
                     tg_num = ch["tg_num"]
                     entry = {

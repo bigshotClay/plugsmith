@@ -28,6 +28,10 @@ DEFAULT_CONFIG: dict = {
         "dmr": True,
         "dstar": False,
         "fusion": False,
+        "nxdn": False,
+        "p25": False,
+        "m17": False,
+        "tetra": False,
     },
     "bands": ["2m", "70cm"],
     "filters": {
@@ -45,15 +49,21 @@ DEFAULT_CONFIG: dict = {
         "max_fm_per_state": 150,
         "max_dmr_per_state": 100,
         "dmr_talkgroups_per_repeater": 7,
+        "max_fusion_per_state": 50,
+        "max_dstar_per_state": 30,
     },
     "adjacent_region": {
         "max_fm_per_state": 30,
         "max_dmr_freqs_per_state": 5,
         "dmr_tgs_per_freq": 3,
+        "max_fusion_per_state": 10,
+        "max_dstar_per_state": 5,
     },
     "shallow_region": {
         "max_fm_freqs": 10,
         "max_dmr_freqs": 3,
+        "max_fusion_freqs": 3,
+        "max_dstar_freqs": 2,
     },
     "simplex": {
         "channels": [
@@ -99,6 +109,23 @@ def _deep_merge(base: dict, override: dict) -> None:
             _deep_merge(base[k], v)
         else:
             base[k] = v
+
+
+def validate_modes(config: dict, radio_profile: object) -> None:
+    """Raise ValueError if any enabled mode is not supported by the radio profile.
+
+    Args:
+        config: Builder config dict (must have a "modes" key).
+        radio_profile: RadioProfile instance with a supported_modes frozenset.
+    """
+    modes = config.get("modes", {})
+    supported = getattr(radio_profile, "supported_modes", frozenset())
+    unsupported = [mode for mode, enabled in modes.items() if enabled and mode not in supported]
+    if unsupported:
+        raise ValueError(
+            f"Radio '{radio_profile.key}' does not support mode(s): {', '.join(sorted(unsupported))}. "
+            f"Supported: {', '.join(sorted(supported))}"
+        )
 
 
 def write_default_config(path: str) -> None:

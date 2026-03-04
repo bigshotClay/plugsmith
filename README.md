@@ -84,6 +84,61 @@ Any radio supported by dmrconf. Common models:
 - Radioddity GD-77, GD-73
 - Baofeng DM-1801
 
+## Supported Modes
+
+plugsmith selects repeater modes based on your radio's hardware capabilities and your
+`config.yaml` `modes:` block. Only modes your radio physically supports are available.
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| FM Analog | ✅ Stable | Full support — analog channels with CTCSS |
+| DMR | ✅ Stable | Full support — digital channels with talkgroups |
+| System Fusion (C4FM) | ⚠️ Experimental | Channels generated as analog; requires Fusion-capable radio (Yaesu FT3D, FT5D, etc.). Not hardware-tested — please [submit a report](#hardware-submission) if you use this. |
+| D-Star | ⚠️ Experimental | Basic channel generation; requires D-Star-capable radio (Icom ID-51, ID-52, etc.). qdmr YAML format unverified against real hardware — please [submit a report](#hardware-submission). |
+| APCO P-25 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
+| NXDN | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
+| M17 | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
+| Tetra | 🔧 Scaffolded | Repeater data parsed and filtered; no channels generated yet. |
+
+**Experimental modes** have been implemented based on the qdmr YAML specification but
+have not been tested against real hardware + dmrconf. If your radio supports one of
+these modes, please use the Hardware Submission feature to send us a working config
+so we can promote it to stable.
+
+## Hardware Submission
+
+When you configure an **unsupported radio model** in plugsmith (one not in the built-in
+profile list), the app will offer to submit a hardware config report on your behalf.
+
+### What it does
+
+1. Detects that your radio key is not in the known-radios list
+2. Prompts you once (not on every launch) to send a config report
+3. Posts a GitHub Issue to the plugsmith repository containing:
+   - Your radio model key and display name
+   - Your firmware version
+   - Your `hw_settings:` block from `config.yaml` (radio-specific parameters)
+   - Any notes you choose to add
+   - The dmrconf version you are using
+
+### What it does NOT send
+
+- Your DMR ID, callsign, or personal information
+- Your RepeaterBook data or codeplug contents
+- Any files from your system
+
+### Why this helps
+
+Hardware reports let maintainers add verified radio profiles with correct channel/zone
+limits and mode support flags. Each submission can unlock full support for a radio
+model that was previously unsupported or experimental.
+
+### Opting out
+
+Simply dismiss the prompt — plugsmith records that you declined and will not ask again
+for the current radio+firmware combination. No data is ever sent without your explicit
+action.
+
 ## Device Path Notes
 
 **macOS:** `cu.usbmodem0000000100001` (no `/dev/` prefix in dmrconf)
