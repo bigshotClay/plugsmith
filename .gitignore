@@ -7,6 +7,8 @@ build/
 venv/
 .pytest_cache/
 .mypy_cache/
+.coverage
+htmlcov/
 .rb_cache/
 *.dfu
 *.yaml.bak
