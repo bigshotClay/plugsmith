@@ -95,12 +95,14 @@ class DashboardPane(TabPane):
             self.query_one("#dash-last-built").update(dt)
             try:
                 import yaml
+                from plugsmith.tool_discovery import RADIO_PROFILES, DEFAULT_RADIO_PROFILE
+                profile = RADIO_PROFILES.get(cfg.radio_model, DEFAULT_RADIO_PROFILE)
                 with open(yaml_path) as f:
                     cp = yaml.safe_load(f)
                 if cp:
                     n_ch = len(cp.get("channels", []))
                     n_zones = len(cp.get("zones", []))
-                    self.query_one("#dash-channels").update(f"{n_ch} / 4000")
+                    self.query_one("#dash-channels").update(f"{n_ch} / {profile.max_channels}")
                     self.query_one("#dash-zones").update(str(n_zones))
             except Exception:
                 pass

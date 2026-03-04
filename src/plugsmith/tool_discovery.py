@@ -19,6 +19,36 @@ class ToolStatus:
     error: Optional[str]
 
 
+@dataclass
+class RadioProfile:
+    key: str                        # dmrconf model key, e.g. "d878uv2"
+    display_name: str               # human name
+    max_channels: int               # total channel capacity
+    max_zones: int                  # total zone capacity
+    max_channels_per_zone: int      # channels per zone
+    hw_family: str                  # "anytone" | "tyt" | "radioddity" | "generic"
+    hw_settings_key: Optional[str]  # config.yaml key for hw block, e.g. "anytone_settings"
+
+
+RADIO_PROFILES: dict[str, RadioProfile] = {
+    "d878uv2":  RadioProfile("d878uv2",  "AT-D878UVII (AnyTone)", 4000, 250, 160, "anytone",    "anytone_settings"),
+    "d878uv":   RadioProfile("d878uv",   "AT-D878UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings"),
+    "d868uv":   RadioProfile("d868uv",   "AT-D868UV (AnyTone)",   4000, 250, 160, "anytone",    "anytone_settings"),
+    "d578uv":   RadioProfile("d578uv",   "AT-D578UV (AnyTone)",   3000, 250, 160, "anytone",    "anytone_settings"),
+    "uv390":    RadioProfile("uv390",    "MD-UV390 (TYT)",         3000, 250, 160, "tyt",        None),
+    "md380":    RadioProfile("md380",    "MD-380 (TYT)",           1000, 250, 160, "tyt",        None),
+    "md9600":   RadioProfile("md9600",   "MD-9600 (TYT)",          3000, 250, 160, "tyt",        None),
+    "gd77":     RadioProfile("gd77",     "GD-77 (Radioddity)",     1024, 250,  80, "radioddity", None),
+    "gd77s":    RadioProfile("gd77s",    "GD-77S (Radioddity)",    1024, 250,  80, "radioddity", None),
+    "d52uv":    RadioProfile("d52uv",    "RD-5R (Baofeng)",        1024, 250,  16, "generic",    None),
+    "dr1801uv": RadioProfile("dr1801uv", "DR-1801UV (Alinco)",     1000, 250, 160, "generic",    None),
+}
+
+DEFAULT_RADIO_PROFILE = RadioProfile(
+    "generic", "Generic DMR Radio", 4000, 250, 160, "generic", None
+)
+
+
 # Fallback list of common radio models when dmrconf --list-radios fails
 _FALLBACK_RADIO_MODELS: list[tuple[str, str]] = [
     ("d878uv2",  "AT-D878UVII (AnyTone)"),

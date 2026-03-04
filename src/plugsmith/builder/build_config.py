@@ -34,6 +34,8 @@ DEFAULT_CONFIG: dict = {
         "adjacent_radius_miles": 600,
     },
     "home_region": {
+        "max_fm_per_state": 150,
+        "max_dmr_per_state": 100,
         "dmr_talkgroups_per_repeater": 7,
     },
     "adjacent_region": {

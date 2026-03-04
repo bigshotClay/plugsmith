@@ -199,6 +199,13 @@ class BuildPane(Widget):
 
             post_line(f"Callsign: {callsign}  DMR ID: {dmr_id}")
 
+            from plugsmith.tool_discovery import RADIO_PROFILES, DEFAULT_RADIO_PROFILE
+            from plugsmith.config import load_app_config
+            app_cfg = load_app_config()
+            radio_profile = RADIO_PROFILES.get(app_cfg.radio_model, DEFAULT_RADIO_PROFILE)
+            post_line(f"Radio: {radio_profile.display_name} "
+                      f"({radio_profile.max_channels} ch / {radio_profile.max_zones} zones)")
+
             strategy = config["organization"]["strategy"]
             post_line(f"Strategy: {strategy}")
 
@@ -260,6 +267,9 @@ class BuildPane(Widget):
             post_line("Classifying states into tiers…")
             state_tiers = classify_states(repeaters, ref_lat, ref_lon, home_r, adj_r)
 
+            from plugsmith.builder.zones import scale_config_to_radio
+            config = scale_config_to_radio(config, radio_profile, state_tiers)
+
             post_line("Building CTCSS and frequency maps…")
             ctcss_map = compute_state_ctcss_map(repeaters)
             input_freq_map = compute_state_input_freq_map(repeaters)
@@ -270,18 +280,23 @@ class BuildPane(Widget):
             set_status("Organizing zones…")
             post_line("Organizing tiered zones…")
             zone_specs = organize_zones_tiered(
-                repeaters, state_tiers, ctcss_map, input_freq_map, config, state_tg_map
+                repeaters, state_tiers, ctcss_map, input_freq_map, config, state_tg_map,
+                max_channels=radio_profile.max_channels,
+                max_channels_per_zone=radio_profile.max_channels_per_zone,
             )
             total_ch = sum(len(zs["channels"]) for zs in zone_specs)
             post_line(f"Zones: {len(zone_specs)}, channels: {total_ch}")
 
             set_status("Generating codeplug YAML…")
             post_line("Generating qdmr YAML…")
+            hw_key = radio_profile.hw_settings_key
+            hw_settings = config.get(hw_key) if hw_key else None
             codeplug = generate_codeplug_yaml(
                 zone_specs=zone_specs,
                 dmr_id=dmr_id,
                 callsign=callsign,
-                anytone_settings=config.get("anytone_settings"),
+                hw_settings=hw_settings,
+                hw_settings_key=hw_key,
             )
 
             post_line(f"Writing codeplug to {output_path}…")

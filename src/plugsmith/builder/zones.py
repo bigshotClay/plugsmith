@@ -288,6 +288,44 @@ def _add_zone_with_overflow(
         })
 
 
+def scale_config_to_radio(
+    config: dict,
+    radio_profile: "RadioProfile",
+    state_tiers: dict[str, str],
+) -> dict:
+    """Return a shallow-copied config with channel caps scaled to the radio's capacity.
+
+    Caps are scaled proportionally from the 4000-channel defaults.  User-set values
+    that are already lower than the scaled value are always respected (never scaled up).
+    """
+    import copy
+    from plugsmith.tool_discovery import RadioProfile  # noqa: F401 (type hint only)
+
+    scale = radio_profile.max_channels / MAX_CHANNELS  # e.g. 0.256 for GD-77
+
+    config = copy.deepcopy(config)
+
+    def _apply(section: str, key: str, default: int) -> None:
+        sec = config.setdefault(section, {})
+        scaled = max(1, int(default * scale))
+        current = sec.get(key)
+        if current is None:
+            sec[key] = scaled
+        else:
+            # Respect user ceiling: never scale up beyond what they set
+            sec[key] = min(current, scaled)
+
+    _apply("home_region",    "max_fm_per_state",        150)
+    _apply("home_region",    "max_dmr_per_state",       100)
+    _apply("adjacent_region","max_fm_per_state",         30)
+    _apply("adjacent_region","max_dmr_freqs_per_state",   5)
+    _apply("adjacent_region","dmr_tgs_per_freq",          3)
+    _apply("shallow_region", "max_fm_freqs",             10)
+    _apply("shallow_region", "max_dmr_freqs",             3)
+
+    return config
+
+
 def organize_zones_tiered(
     repeaters: list[Repeater],
     state_tiers: dict[str, str],
@@ -295,6 +333,8 @@ def organize_zones_tiered(
     input_freq_map: dict,
     config: dict,
     state_tg_map: dict[str, int],
+    max_channels: int = MAX_CHANNELS,
+    max_channels_per_zone: int = MAX_CHANNELS_PER_ZONE,
 ) -> list[dict]:
     """Build the full ordered zone spec list for the tiered_region strategy.
 
@@ -303,6 +343,7 @@ def organize_zones_tiered(
     """
     from .api import US_STATES as _US_STATES
 
+    effective_zone_max = min(MAX_CHANNELS_PER_ZONE, max_channels_per_zone)
     zone_specs: list[dict] = []
     home_state = config.get("home_state", "MO")
 
@@ -316,8 +357,8 @@ def organize_zones_tiered(
         hs_ch = home_state_channels(home_state, hs_rpts, config, state_tg_map)
         ch_2m   = [ch for ch in hs_ch if 144.0 <= ch["rx_freq"] <= 148.0]
         ch_70cm = [ch for ch in hs_ch if 420.0 <= ch["rx_freq"] <= 450.0]
-        _add_zone_with_overflow(zone_specs, f"{home_state} 2m",   ch_2m,   "home", home_state)
-        _add_zone_with_overflow(zone_specs, f"{home_state} 70cm", ch_70cm, "home", home_state)
+        _add_zone_with_overflow(zone_specs, f"{home_state} 2m",   ch_2m,   "home", home_state, effective_zone_max)
+        _add_zone_with_overflow(zone_specs, f"{home_state} 70cm", ch_70cm, "home", home_state, effective_zone_max)
         log.info(f"{home_state} (home/primary): {len(hs_ch)} channels ({len(ch_2m)} 2m, {len(ch_70cm)} 70cm)")
 
     # Other home states
@@ -326,21 +367,21 @@ def organize_zones_tiered(
             continue
         st_rpts = [r for r in repeaters if r.state_abbr == state]
         st_ch = home_state_channels(state, st_rpts, config, state_tg_map)
-        _add_zone_with_overflow(zone_specs, state, st_ch, "home", state)
+        _add_zone_with_overflow(zone_specs, state, st_ch, "home", state, effective_zone_max)
         log.info(f"{state} (home): {len(st_ch)} channels")
 
     # Adjacent states
     for state in adjacent_states:
         st_rpts = [r for r in repeaters if r.state_abbr == state]
         st_ch = adjacent_state_channels(state, st_rpts, ctcss_map, input_freq_map, config)
-        _add_zone_with_overflow(zone_specs, state, st_ch, "adjacent", state)
+        _add_zone_with_overflow(zone_specs, state, st_ch, "adjacent", state, effective_zone_max)
         log.info(f"{state} (adjacent): {len(st_ch)} channels")
 
     # Shallow states
     for state in shallow_states:
         st_rpts = [r for r in repeaters if r.state_abbr == state]
         st_ch = shallow_state_channels(state, st_rpts, ctcss_map, input_freq_map, config)
-        _add_zone_with_overflow(zone_specs, state, st_ch, "shallow", state)
+        _add_zone_with_overflow(zone_specs, state, st_ch, "shallow", state, effective_zone_max)
         log.info(f"{state} (shallow): {len(st_ch)} channels")
 
     # Simplex
@@ -355,7 +396,7 @@ def organize_zones_tiered(
 
     total_ch = sum(len(zs["channels"]) for zs in zone_specs)
     log.info(f"Total zones: {len(zone_specs)}, total channels: {total_ch}")
-    if total_ch > MAX_CHANNELS:
-        log.warning(f"WARNING: {total_ch} channels exceeds radio limit of {MAX_CHANNELS}!")
+    if total_ch > max_channels:
+        log.warning(f"WARNING: {total_ch} channels exceeds radio limit of {max_channels}!")
 
     return zone_specs

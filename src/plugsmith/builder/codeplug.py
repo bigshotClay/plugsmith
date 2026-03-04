@@ -13,7 +13,8 @@ def generate_codeplug_yaml(
     dmr_id: int,
     callsign: str,
     dmr_talkgroups: Optional[list[tuple]] = None,
-    anytone_settings: Optional[dict] = None,
+    hw_settings: Optional[dict] = None,
+    hw_settings_key: Optional[str] = None,
 ) -> dict:
     """Generate a qdmr-compatible codeplug dict from pre-built zone specs.
 
@@ -24,7 +25,9 @@ def generate_codeplug_yaml(
         dmr_id: Operator DMR ID number.
         callsign: Operator callsign.
         dmr_talkgroups: Unused; kept for API symmetry.
-        anytone_settings: Optional dict written under settings.anytone.
+        hw_settings: Optional hardware settings dict for the target radio family.
+        hw_settings_key: config.yaml key for the hw block (e.g. "anytone_settings").
+            The qdmr YAML key is derived by stripping the "_settings" suffix.
     """
     settings: dict = {
         "defaultID": callsign,
@@ -37,8 +40,9 @@ def generate_codeplug_yaml(
         "vox": 0,
         "tot": 180,
     }
-    if anytone_settings:
-        settings["anytone"] = anytone_settings
+    if hw_settings and hw_settings_key:
+        qdmr_key = hw_settings_key.removesuffix("_settings")
+        settings[qdmr_key] = hw_settings
 
     codeplug: dict = {
         "version": "0.12.0",
