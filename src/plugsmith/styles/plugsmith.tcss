@@ -1,0 +1,119 @@
+/* plugsmith.tcss — Global Textual styles for plugsmith */
+
+/* ── App chrome ─────────────────────────────────────────────────── */
+
+App {
+    background: $surface;
+}
+
+Header {
+    background: $primary-darken-2;
+    color: $text;
+    height: 1;
+    dock: top;
+}
+
+Footer {
+    background: $panel-darken-1;
+    height: 1;
+    dock: bottom;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+
+TabbedContent {
+    height: 1fr;
+}
+
+TabPane {
+    padding: 0;
+}
+
+/* ── Inputs & controls ────────────────────────────────────────────── */
+
+Input {
+    border: tall $primary-darken-2;
+}
+
+Input:focus {
+    border: tall $primary;
+}
+
+Select {
+    border: tall $primary-darken-2;
+}
+
+Select:focus {
+    border: tall $primary;
+}
+
+Button {
+    margin: 0 1 0 0;
+}
+
+/* ── Common layout helpers ────────────────────────────────────────── */
+
+.row {
+    height: 3;
+    margin-bottom: 0;
+    align: left middle;
+}
+
+.section-title {
+    color: $primary;
+    text-style: bold;
+    margin: 1 0 0 0;
+    padding-top: 1;
+    border-top: solid $primary-darken-3;
+}
+
+/* ── RichLog ──────────────────────────────────────────────────────── */
+
+RichLog {
+    background: $surface-darken-1;
+    border: solid $primary-darken-3;
+    scrollbar-size: 1 1;
+}
+
+/* ── ProgressBar ──────────────────────────────────────────────────── */
+
+ProgressBar {
+    height: 1;
+}
+
+ProgressBar Bar {
+    background: $primary-darken-3;
+    color: $primary;
+}
+
+/* ── Collapsible ──────────────────────────────────────────────────── */
+
+Collapsible {
+    border: solid $primary-darken-3;
+    margin-top: 1;
+}
+
+/* ── StatusBar separator ─────────────────────────────────────────── */
+
+StatusBar .sep {
+    color: $text-muted;
+}
+
+/* ── Modals ───────────────────────────────────────────────────────── */
+
+ModalScreen {
+    background: $background 70%;
+}
+
+/* ── SelectionList ────────────────────────────────────────────────── */
+
+SelectionList {
+    border: tall $primary-darken-2;
+    height: 5;
+}
+
+/* ── Scrollable containers ─────────────────────────────────────────── */
+
+ScrollableContainer {
+    scrollbar-size: 1 1;
+}
