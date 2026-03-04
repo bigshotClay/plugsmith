@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import platform
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -139,6 +141,65 @@ def list_radio_models(dmrconf_path: str = "") -> list[tuple[str, str]]:
     except (subprocess.SubprocessError, OSError, FileNotFoundError):
         pass
     return _FALLBACK_RADIO_MODELS
+
+
+def list_serial_devices() -> list[str]:
+    """Return bare device names for connected serial/USB devices.
+
+    Returns names without the /dev/ prefix to match the convention used
+    throughout plugsmith (e.g. "cu.usbmodem0000000100001").
+
+    macOS: /dev/cu.usb*
+    Linux: /dev/ttyUSB* and /dev/ttyACM*
+    """
+    if platform.system() == "Darwin":
+        patterns = ["/dev/cu.usb*"]
+    else:
+        patterns = ["/dev/ttyUSB*", "/dev/ttyACM*"]
+
+    devices: list[str] = []
+    for pattern in patterns:
+        devices.extend(p.name for p in sorted(Path("/dev").glob(pattern.replace("/dev/", ""))))
+    return devices
+
+
+def detect_radio_model(device: str, dmrconf_path: str = "") -> str | None:
+    """Run dmrconf detect against a device and return the matching RADIO_PROFILES key.
+
+    Args:
+        device: Bare device name (no /dev/ prefix), e.g. "cu.usbmodem0000000100001".
+        dmrconf_path: Optional explicit path to dmrconf binary.
+
+    Returns:
+        A key from RADIO_PROFILES (e.g. "d878uv2") if the radio is recognised,
+        or None if detection fails or the radio is unknown.
+    """
+    binary = dmrconf_path or shutil.which("dmrconf") or "dmrconf"
+    try:
+        result = subprocess.run(
+            [binary, "detect", "--device", device],
+            capture_output=True, text=True, timeout=10,
+        )
+        output = (result.stdout + result.stderr).lower()
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
+        return None
+
+    # Match against RADIO_PROFILES keys using word boundaries so that "d878uv"
+    # does not match inside "d878uvii".  Check longest keys first so more-specific
+    # profiles (e.g. "d878uv2") are preferred over shorter prefixes ("d878uv").
+    for key in sorted(RADIO_PROFILES, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(key)}\b", output):
+            return key
+    # Fall back to display name match (strip parenthetical brand suffix).
+    for key, profile in sorted(
+        RADIO_PROFILES.items(),
+        key=lambda kv: len(kv[1].display_name),
+        reverse=True,
+    ):
+        base_name = profile.display_name.split("(")[0].strip().lower()
+        if base_name and base_name in output:
+            return key
+    return None
 
 
 def builder_version() -> str:

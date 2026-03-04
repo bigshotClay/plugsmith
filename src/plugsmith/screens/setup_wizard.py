@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import yaml
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.containers import Center, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, ContentSwitcher, Input, Label, Select, Static
 
-from plugsmith.tool_discovery import list_radio_models
+from plugsmith.tool_discovery import (
+    RADIO_PROFILES,
+    detect_radio_model,
+    list_radio_models,
+    list_serial_devices,
+)
 
 
 class SetupWizardScreen(ModalScreen[bool]):
@@ -65,6 +71,25 @@ class SetupWizardScreen(ModalScreen[bool]):
     SetupWizardScreen .summary-row {
         margin-bottom: 1;
     }
+    SetupWizardScreen .detect-row {
+        height: 3;
+        margin-bottom: 1;
+        align: left middle;
+    }
+    SetupWizardScreen #wiz-detect-status {
+        margin-left: 2;
+        color: $text-muted;
+    }
+    SetupWizardScreen .detect-help {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+    SetupWizardScreen .section-label {
+        text-style: bold;
+        color: $text-muted;
+        margin-top: 1;
+        margin-bottom: 1;
+    }
     """
 
     def __init__(self) -> None:
@@ -101,9 +126,15 @@ class SetupWizardScreen(ModalScreen[bool]):
                 with Vertical(id="step-1"):
                     yield Label("Step 2 of 3 — Radio Setup", classes="step-title")
                     yield Static(
-                        "Enter your radio's USB device path and select the model.",
-                        classes="step-help",
+                        "Auto-detect your radio by unplugging it first, then clicking "
+                        "[b]Start Detection[/b] and plugging it back in.",
+                        classes="detect-help",
+                        markup=True,
                     )
+                    with Horizontal(classes="detect-row"):
+                        yield Button("Start Detection", id="wiz-detect-start", variant="primary")
+                        yield Static("", id="wiz-detect-status")
+                    yield Label("— or enter manually —", classes="section-label")
                     with Horizontal(classes="row"):
                         yield Label("Device path:")
                         yield Input(
@@ -167,6 +198,60 @@ class SetupWizardScreen(ModalScreen[bool]):
     def _prev_step(self) -> None:
         self._step = max(self._step - 1, 0)
         self._update_nav()
+
+    @on(Button.Pressed, "#wiz-detect-start")
+    def _start_detection(self) -> None:
+        self.query_one("#wiz-detect-start", Button).disabled = True
+        self._set_detect_status("Scanning current devices…")
+        self._run_detection_worker()
+
+    @work(thread=True)
+    def _run_detection_worker(self) -> None:
+        snapshot = set(list_serial_devices())
+        self.call_from_thread(self._set_detect_status, "Plug in your radio now…")
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            time.sleep(0.5)
+            current = set(list_serial_devices())
+            new = current - snapshot
+            if new:
+                device = sorted(new)[0]
+                self.call_from_thread(self._on_device_found, device)
+                return
+        self.call_from_thread(self._on_detection_timeout)
+
+    def _on_device_found(self, device: str) -> None:
+        self.query_one("#wiz-device", Input).value = device
+        self._set_detect_status(f"Found {device} — identifying radio…")
+        self._identify_radio_worker(device)
+
+    @work(thread=True)
+    def _identify_radio_worker(self, device: str) -> None:
+        from plugsmith.config import load_app_config
+        cfg = load_app_config()
+        model_key = detect_radio_model(device, cfg.dmrconf_path)
+        self.call_from_thread(self._on_radio_identified, device, model_key)
+
+    def _on_radio_identified(self, device: str, model_key: str | None) -> None:
+        if model_key and model_key in RADIO_PROFILES:
+            display = RADIO_PROFILES[model_key].display_name
+            self._set_detect_status(f"[green]✓ {device} — {display}[/green]")
+            select = self.query_one("#wiz-radio-model", Select)
+            select.value = model_key
+        else:
+            self._set_detect_status(
+                f"[green]✓ {device} found[/green] — select radio model below",
+            )
+        self.query_one("#wiz-detect-start", Button).disabled = False
+
+    def _on_detection_timeout(self) -> None:
+        self._set_detect_status(
+            "[red]✗ No device detected. Enter path manually below.[/red]",
+        )
+        self.query_one("#wiz-detect-start", Button).disabled = False
+
+    def _set_detect_status(self, text: str) -> None:
+        self.query_one("#wiz-detect-status", Static).update(text)
 
     @on(Button.Pressed, "#wiz-browse-config")
     def _browse_config(self) -> None:

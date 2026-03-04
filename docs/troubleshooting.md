@@ -12,7 +12,24 @@
 
 ---
 
-## Device not found / detect fails
+## Setup wizard auto-detect finds no device
+
+**Symptom:** "Start Detection" times out with "No device detected."
+
+**Fixes:**
+- Make sure you unplugged the radio *before* clicking Start Detection (the wizard
+  watches for a new device to appear)
+- Confirm the USB cable is plugged in and data-capable (not a charge-only cable)
+- Try a different USB port
+- If detection still fails, enter the device path manually:
+  - macOS: `ls /dev/cu.usb*` to find the name, then paste it into the Device path field
+  - Linux: `ls /dev/ttyUSB*` or `dmesg | tail -20` after plugging in
+  - Linux: add yourself to the `dialout` group: `sudo usermod -aG dialout $USER` (then log out/in)
+  - WSL: use usbipd-win to attach the device (see [Installation](installation.md))
+
+---
+
+## Device not found / detect fails (Radio tab)
 
 **Symptom:** Detect fails with "device not found" or timeout.
 

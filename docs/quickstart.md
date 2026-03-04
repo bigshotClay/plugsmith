@@ -25,8 +25,12 @@ On first launch, the **Setup Wizard** appears automatically.
 - If not, click **Create New** — a starter config is created in `~/codeplug/config.yaml`
 
 **Step 2 — Radio setup:**
-- Enter your USB device path (e.g. `cu.usbmodem0000000100001` on macOS)
-- Select your radio model from the dropdown
+- Click **Start Detection** to auto-detect your radio:
+  1. Unplug your radio from USB
+  2. Click **Start Detection**
+  3. Plug the radio back in — plugsmith detects the device and identifies the model automatically
+- If auto-detect times out or you prefer manual entry, type the device path directly
+  (e.g. `cu.usbmodem0000000100001` on macOS) and choose the model from the dropdown
 
 **Step 3 — Confirm:**
 - Review settings, click **Save & Launch**
