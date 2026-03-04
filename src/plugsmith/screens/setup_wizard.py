@@ -210,7 +210,7 @@ class SetupWizardScreen(ModalScreen[bool]):
     @work(thread=True)
     def _run_detection_worker(self) -> None:
         snapshot = set(list_serial_devices())
-        self.call_from_thread(self._set_detect_status, "Plug in your radio now…")
+        self.app.call_from_thread(self._set_detect_status, "Plug in your radio now…")
         deadline = time.monotonic() + 30.0
         while time.monotonic() < deadline:
             time.sleep(0.5)
@@ -218,9 +218,9 @@ class SetupWizardScreen(ModalScreen[bool]):
             new = current - snapshot
             if new:
                 device = sorted(new)[0]
-                self.call_from_thread(self._on_device_found, device)
+                self.app.call_from_thread(self._on_device_found, device)
                 return
-        self.call_from_thread(self._on_detection_timeout)
+        self.app.call_from_thread(self._on_detection_timeout)
 
     def _on_device_found(self, device: str) -> None:
         self.query_one("#wiz-device", Input).value = device
@@ -232,7 +232,7 @@ class SetupWizardScreen(ModalScreen[bool]):
         from plugsmith.config import load_app_config
         cfg = load_app_config()
         model_key = detect_radio_model(device, cfg.dmrconf_path)
-        self.call_from_thread(self._on_radio_identified, device, model_key)
+        self.app.call_from_thread(self._on_radio_identified, device, model_key)
 
     def _on_radio_identified(self, device: str, model_key: str | None) -> None:
         if model_key and model_key in RADIO_PROFILES:
