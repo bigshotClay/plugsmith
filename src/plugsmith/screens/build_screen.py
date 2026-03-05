@@ -36,7 +36,11 @@ class BuildPane(Widget):
 
     DEFAULT_CSS = """
     BuildPane {
+        height: 1fr;
         padding: 1 2;
+    }
+    BuildPane > Vertical {
+        height: 1fr;
     }
     BuildPane .row {
         height: 3;
@@ -65,6 +69,11 @@ class BuildPane(Widget):
         margin-bottom: 1;
         color: $text-muted;
     }
+    BuildPane .attribution {
+        height: 1;
+        margin-bottom: 1;
+        color: $text-muted;
+    }
     """
 
     _building: reactive[bool] = reactive(False)
@@ -72,6 +81,10 @@ class BuildPane(Widget):
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Label("[bold]Build Codeplug[/bold]")
+            yield Static(
+                "Repeater data provided by [bold]RepeaterBook[/bold] — repeaterbook.com",
+                classes="attribution",
+            )
             with Horizontal(classes="row"):
                 yield Label("Config:")
                 yield Input(placeholder="Path to config.yaml…", id="input-config-path")
@@ -166,14 +179,14 @@ class BuildPane(Widget):
         from plugsmith.builder.export import write_qdmr_yaml, write_anytone_csv, write_summary
 
         def post_line(msg: str, is_err: bool = False) -> None:
-            self.call_from_thread(
+            self.app.call_from_thread(
                 self.query_one("#build-log", OutputLog).write_line,
                 msg,
                 "red" if is_err else None,
             )
 
         def set_status(msg: str) -> None:
-            self.call_from_thread(
+            self.app.call_from_thread(
                 self.query_one("#build-status", Static).update,
                 msg,
             )
@@ -390,7 +403,7 @@ class BuildPane(Widget):
             set_status(f"✓ Build complete — {n_ch} channels, {n_zones} zones")
             post_line(f"\n✓ Done: {n_ch} channels, {n_zones} zones written to {output_path}")
 
-            self.call_from_thread(
+            self.app.call_from_thread(
                 self.post_message,
                 BuildPane.BuildFinished(success=True, channel_count=n_ch, zone_count=n_zones),
             )
@@ -401,9 +414,9 @@ class BuildPane(Widget):
             post_line(f"Build failed: {exc}", is_err=True)
             post_line(tb, is_err=True)
             set_status(f"✗ Build failed: {exc}")
-            self.call_from_thread(
+            self.app.call_from_thread(
                 self.post_message,
                 BuildPane.BuildFinished(success=False, error=str(exc)),
             )
         finally:
-            self.call_from_thread(lambda: setattr(self, "_building", False))
+            self.app.call_from_thread(lambda: setattr(self, "_building", False))

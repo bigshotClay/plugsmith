@@ -82,7 +82,7 @@ DEFAULT_CONFIG: dict = {
         "summary": "codeplug_summary.txt",
     },
     "cache_dir": ".rb_cache",
-    "rate_limit_seconds": 2.0,
+    "rate_limit_seconds": 10.0,
 }
 
 

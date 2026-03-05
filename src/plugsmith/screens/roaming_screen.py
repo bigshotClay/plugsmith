@@ -17,7 +17,11 @@ class RoamingPane(Widget):
 
     DEFAULT_CSS = """
     RoamingPane {
+        height: 1fr;
         padding: 1 2;
+    }
+    RoamingPane > Vertical {
+        height: 1fr;
     }
     RoamingPane .pane-header {
         height: 2;

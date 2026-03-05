@@ -6,6 +6,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual import on
+from textual.widget import Widget
 from textual.widgets import Button, Footer, Header, Static, TabbedContent, TabPane
 
 from plugsmith.widgets.status_bar import StatusBar
@@ -15,11 +16,12 @@ from plugsmith.screens.config_editor import ConfigEditorPane
 from plugsmith.screens.roaming_screen import RoamingPane
 
 
-class DashboardPane(TabPane):
+class DashboardPane(Widget):
     """Dashboard tab — shows codeplug stats and quick launch buttons."""
 
     DEFAULT_CSS = """
     DashboardPane {
+        height: 1fr;
         padding: 1 2;
     }
     DashboardPane .stat-grid {
@@ -52,6 +54,10 @@ class DashboardPane(TabPane):
         display: none;
         margin-top: 1;
     }
+    #dash-attribution {
+        margin-top: 1;
+        color: $text-muted;
+    }
     """
 
     def compose(self) -> ComposeResult:
@@ -82,8 +88,16 @@ class DashboardPane(TabPane):
                 yield Button("Edit Config", id="dash-btn-config", variant="default")
             yield Static("", id="dash-hw-notice", markup=True)
             yield Button("Submit Hardware Config", id="dash-btn-hw-submit", variant="primary")
+            yield Static(
+                "Repeater data provided by [bold]RepeaterBook[/bold] — repeaterbook.com",
+                id="dash-attribution",
+            )
 
     def on_mount(self) -> None:
+        # Prevent focus-chain from triggering TabbedContent._on_tab_pane_focused
+        # which would reset the active tab when any descendant is focused.
+        for btn_id in ("dash-btn-build", "dash-btn-radio", "dash-btn-config"):
+            self.query_one(f"#{btn_id}", Button).can_focus = False
         self.refresh_stats()
 
     def refresh_stats(self) -> None:
@@ -154,6 +168,21 @@ class DashboardPane(TabPane):
             callback=self._on_hw_submit_result,
         )
 
+    @on(Button.Pressed, "#dash-btn-build")
+    def _go_build(self) -> None:
+        self._switch_tab("tab-build")
+
+    @on(Button.Pressed, "#dash-btn-radio")
+    def _go_radio(self) -> None:
+        self._switch_tab("tab-radio")
+
+    @on(Button.Pressed, "#dash-btn-config")
+    def _go_config(self) -> None:
+        self._switch_tab("tab-config")
+
+    def _switch_tab(self, tab_id: str) -> None:
+        self.app.screen.query_one("#main-tabs", TabbedContent).active = tab_id
+
     def _on_hw_submit_result(self, firmware: str | None) -> None:
         if firmware:
             from plugsmith.config import load_app_config
@@ -183,7 +212,7 @@ class MainScreen(Screen):
             id="main-tabs",
         ):
             with TabPane("Dashboard", id="tab-dashboard"):
-                yield DashboardPane("Dashboard")
+                yield DashboardPane()
             with TabPane("Build", id="tab-build"):
                 yield BuildPane()
             with TabPane("Radio", id="tab-radio"):
@@ -232,7 +261,7 @@ class MainScreen(Screen):
     def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
         from plugsmith.config import load_app_config
         cfg = load_app_config()
-        cfg.last_tab = event.tab.id or "tab-dashboard"
+        cfg.last_tab = (event.pane.id if event.pane else None) or "tab-dashboard"
         cfg.save()
 
     def on_build_pane_build_finished(self, msg: BuildPane.BuildFinished) -> None:

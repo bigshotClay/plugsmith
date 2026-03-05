@@ -53,17 +53,23 @@ class RepeaterBookClient:
                 and BuildPane will construct this automatically.
             progress_callback: Called with (message, is_cached) per state fetch.
         """
-        if not user_agent:
-            raise ValueError(
-                "RepeaterBook requires a valid email in the User-Agent. "
-                "Set api_email in your config.yaml."
-            )
+        self._user_agent = user_agent
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.rate_limit = rate_limit
         self.progress_callback = progress_callback
+        self._last_request_time: float = 0.0
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": user_agent})
+        if user_agent:
+            self.session.headers.update({"User-Agent": user_agent})
+
+    def _throttle(self) -> None:
+        """Sleep until at least rate_limit seconds have passed since the last request."""
+        elapsed = time.time() - self._last_request_time
+        wait = self.rate_limit - elapsed
+        if wait > 0:
+            time.sleep(wait)
+        self._last_request_time = time.time()
 
     def _cache_path(self, state_id: str) -> Path:
         return self.cache_dir / f"state_{state_id}.json"
@@ -82,6 +88,11 @@ class RepeaterBookClient:
 
     def fetch_state(self, state_abbr: str, country: str = "United States") -> list[dict]:
         """Fetch all repeaters for a US state, using cache when fresh."""
+        if not self._user_agent:
+            raise ValueError(
+                "RepeaterBook requires a valid email in the User-Agent. "
+                "Set api_email in your config.yaml."
+            )
         state_abbr = state_abbr.upper().strip()
         if state_abbr not in US_STATES:
             log.warning(f"Unknown state abbreviation: {state_abbr}")
@@ -96,20 +107,36 @@ class RepeaterBookClient:
                 return json.load(f)
 
         self._notify(f"Fetching {state_name} from RepeaterBook...", is_cached=False)
+        self._throttle()
         try:
             resp = self.session.get(
                 REPEATERBOOK_EXPORT,
                 params={"state": state_name, "country": country},
                 timeout=30,
             )
-            if resp.status_code == 429:
-                self._notify(f"Fetching {state_name}... (429 rate limit — waiting 90s)")
-                time.sleep(90)
-                resp = self.session.get(
-                    REPEATERBOOK_EXPORT,
-                    params={"state": state_name, "country": country},
-                    timeout=30,
+            if resp.status_code == 401:
+                raise PermissionError(
+                    "RepeaterBook API returned 401 Unauthorized.\n\n"
+                    "As of March 3, 2026, RepeaterBook requires allowlist approval.\n"
+                    "Request access at: https://www.repeaterbook.com/api/token_request.php\n\n"
+                    "A token-based system launches March 31, 2026. Until then,\n"
+                    "submit the request form and wait for admin approval."
                 )
+            if resp.status_code == 429:
+                for wait_sec in (90, 180, 300):
+                    self._notify(f"Fetching {state_name}... (429 rate limited — waiting {wait_sec}s)")
+                    time.sleep(wait_sec)
+                    self._throttle()
+                    resp = self.session.get(
+                        REPEATERBOOK_EXPORT,
+                        params={"state": state_name, "country": country},
+                        timeout=30,
+                    )
+                    if resp.status_code != 429:
+                        break
+                else:
+                    self._notify(f"Fetching {state_name}... (429 persists after retries — skipping)")
+                    return []
             resp.raise_for_status()
             results = resp.json().get("results", [])
 
@@ -117,9 +144,10 @@ class RepeaterBookClient:
                 json.dump(results, f)
 
             self._notify(f"Fetched {state_name}: {len(results)} repeaters")
-            time.sleep(self.rate_limit)
             return results
 
+        except PermissionError:
+            raise
         except requests.RequestException as e:
             log.error(f"Failed to fetch {state_name}: {e}")
             if cache_path.exists():

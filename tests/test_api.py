@@ -41,8 +41,9 @@ def _mock_response(data: list | dict, status: int = 200) -> MagicMock:
 
 class TestRepeaterBookClientConstructor:
     def test_raises_if_no_user_agent(self, tmp_path):
+        client = RepeaterBookClient(cache_dir=str(tmp_path), user_agent="")
         with pytest.raises(ValueError, match="email"):
-            RepeaterBookClient(cache_dir=str(tmp_path), user_agent="")
+            client.fetch_state("MO")
 
     def test_creates_cache_dir(self, tmp_path):
         cache_dir = tmp_path / "newcache"
@@ -138,6 +139,15 @@ class TestFetchStateLive:
         client = _make_client(tmp_path)
         client._notify("test message")  # no progress_callback set
 
+    def test_handles_401_raises_permission_error(self, tmp_path):
+        client = _make_client(tmp_path)
+        resp_401 = MagicMock()
+        resp_401.status_code = 401
+        resp_401.raise_for_status.return_value = None
+        client.session.get = MagicMock(return_value=resp_401)
+        with pytest.raises(PermissionError, match="401"):
+            client.fetch_state("MO")
+
     def test_handles_429_rate_limit_retry(self, tmp_path):
         client = _make_client(tmp_path)
         repeaters = [{"Callsign": "W0MO"}]
@@ -153,6 +163,22 @@ class TestFetchStateLive:
         with patch("plugsmith.builder.api.time.sleep"):
             result = client.fetch_state("MO")
         assert result == repeaters
+
+    def test_handles_429_all_retries_exhausted_returns_empty(self, tmp_path):
+        client = _make_client(tmp_path)
+
+        always_429 = MagicMock()
+        always_429.status_code = 429
+        always_429.raise_for_status.return_value = None
+
+        # 1 initial + 3 retries = 4 calls, all 429
+        client.session.get = MagicMock(return_value=always_429)
+
+        with patch("plugsmith.builder.api.time.sleep"):
+            result = client.fetch_state("MO")
+
+        assert result == []
+        assert client.session.get.call_count == 4  # 1 initial + 3 retries
 
     def test_request_exception_returns_empty_no_cache(self, tmp_path):
         client = _make_client(tmp_path)

@@ -119,9 +119,17 @@ class TalkgroupClient:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.rate_limit = rate_limit
         self.progress_callback = progress_callback
+        self._last_request_time: float = 0.0
         self.session = requests.Session()
         if user_agent:
             self.session.headers.update({"User-Agent": user_agent})
+
+    def _throttle(self) -> None:
+        elapsed = time.time() - self._last_request_time
+        wait = self.rate_limit - elapsed
+        if wait > 0:
+            time.sleep(wait)
+        self._last_request_time = time.time()
 
     def _is_cache_fresh(self, path: Path) -> bool:
         if not path.exists():
@@ -143,13 +151,13 @@ class TalkgroupClient:
                 raw = json.load(f)
         else:
             self._notify("Fetching BrandMeister TG list…")
+            self._throttle()
             try:
                 resp = self.session.get(BRANDMEISTER_TG_URL, timeout=30)
                 resp.raise_for_status()
                 raw = resp.json()
                 with open(cache_path, "w") as f:
                     json.dump(raw, f)
-                time.sleep(self.rate_limit)
             except requests.RequestException as exc:
                 log.error(f"Failed to fetch BrandMeister TGs: {exc}")
                 if cache_path.exists():
@@ -170,7 +178,7 @@ class TalkgroupClient:
                 name = str(item.get("name") or f"TG {tg_id}").strip()[:32] or f"TG {tg_id}"
                 call_type = "PrivateCall" if tg_id in PRIVATE_CALL_TGS else "GroupCall"
                 tgs.append(TalkgroupInfo(tg_id=tg_id, name=name, call_type=call_type, network="BrandMeister"))
-            except (TypeError, ValueError):
+            except Exception:
                 continue
         self._notify(f"BrandMeister: {len(tgs)} talkgroups")
         return tgs
@@ -184,13 +192,13 @@ class TalkgroupClient:
                 raw = json.load(f)
         else:
             self._notify("Fetching TGIF TG list…")
+            self._throttle()
             try:
                 resp = self.session.get(TGIF_TG_URL, timeout=30)
                 resp.raise_for_status()
                 raw = resp.json()
                 with open(cache_path, "w") as f:
                     json.dump(raw, f)
-                time.sleep(self.rate_limit)
             except requests.RequestException as exc:
                 log.error(f"Failed to fetch TGIF TGs: {exc}")
                 if cache_path.exists():
@@ -217,7 +225,7 @@ class TalkgroupClient:
                 tgs.append(TalkgroupInfo(
                     tg_id=tg_id, name=name, call_type=call_type, network="TGIF", description=desc
                 ))
-            except (TypeError, ValueError):
+            except Exception:
                 continue
         self._notify(f"TGIF: {len(tgs)} talkgroups")
         return tgs
@@ -284,9 +292,17 @@ class RadioIDClient:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.rate_limit = rate_limit
         self.progress_callback = progress_callback
+        self._last_request_time: float = 0.0
         self.session = requests.Session()
         if user_agent:
             self.session.headers.update({"User-Agent": user_agent})
+
+    def _throttle(self) -> None:
+        elapsed = time.time() - self._last_request_time
+        wait = self.rate_limit - elapsed
+        if wait > 0:
+            time.sleep(wait)
+        self._last_request_time = time.time()
 
     def _cache_path(self, state_abbr: str) -> Path:
         return self.cache_dir / f"radioid_{state_abbr.upper()}.json"
@@ -324,6 +340,7 @@ class RadioIDClient:
                 raw = json.load(f)
         else:
             self._notify(f"Fetching RadioID TGs for {state_name}…")
+            self._throttle()
             try:
                 resp = self.session.get(
                     RADIOID_REPEATER_URL,
@@ -334,7 +351,6 @@ class RadioIDClient:
                 raw = resp.json()
                 with open(cache_path, "w") as f:
                     json.dump(raw, f)
-                time.sleep(self.rate_limit)
             except requests.RequestException as exc:
                 log.error(f"Failed to fetch RadioID data for {state_name}: {exc}")
                 if cache_path.exists():

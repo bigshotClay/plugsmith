@@ -104,7 +104,11 @@ class ConfigEditorPane(Widget):
 
     DEFAULT_CSS = """
     ConfigEditorPane {
+        height: 1fr;
         padding: 1 2;
+    }
+    ConfigEditorPane > Vertical {
+        height: 1fr;
     }
     ConfigEditorPane ScrollableContainer {
         height: 1fr;
@@ -472,15 +476,23 @@ class ConfigEditorPane(Widget):
         """Mount the appropriate hw section based on the configured radio model."""
         from plugsmith.config import load_app_config
         from plugsmith.tool_discovery import RADIO_PROFILES
+        from textual.css.query import NoMatches
 
         cfg = load_app_config()
         profile = RADIO_PROFILES.get(cfg.radio_model or "")
         outer = self.query_one("#hw-section-outer", Vertical)
-        outer.remove_children()
 
         if profile and profile.hw_settings_key:
-            # AnyTone: mount metadata-driven collapsible
+            # AnyTone: mount metadata-driven collapsible (reuse if already present)
             self._hw_mode = "anytone"
+            try:
+                outer.query_one("#hw-anytone-collapsible")
+                # Already mounted — just re-populate fields
+                self.call_after_refresh(self._populate_hw_fields)
+                return
+            except NoMatches:
+                pass
+            outer.remove_children()
             outer.mount(Collapsible(
                 _AnyToneHwSection(),
                 title="Radio Hardware Settings (AnyTone)",
@@ -496,6 +508,12 @@ class ConfigEditorPane(Widget):
 
             if data:
                 self._hw_mode = "generic"
+                try:
+                    outer.query_one("#hw-generic-collapsible")
+                    return  # Already mounted
+                except NoMatches:
+                    pass
+                outer.remove_children()
                 outer.mount(Collapsible(
                     GenericHwPane(settings_key, data, id="hw-generic-pane"),
                     title=f"Radio Hardware Settings ({cfg.radio_model or 'Generic'})",
@@ -504,6 +522,12 @@ class ConfigEditorPane(Widget):
                 ))
             else:
                 self._hw_mode = "none"
+                try:
+                    outer.query_one("#hw-no-settings-notice")
+                    return  # Already mounted
+                except NoMatches:
+                    pass
+                outer.remove_children()
                 outer.mount(Static(
                     f"No device-specific settings found for [bold]{cfg.radio_model or 'this radio'}[/bold]. "
                     f"Add a [bold]{settings_key}[/bold] block to your config.yaml, "
@@ -598,7 +622,7 @@ class ConfigEditorPane(Widget):
 
         def _set(widget_id: str, val: str) -> None:
             try:
-                self.query_one(f"#{widget_id}", LabeledInput).value = val
+                self.query_one(f"#{widget_id}", Input).value = val
             except Exception:
                 pass
 
@@ -691,7 +715,7 @@ class ConfigEditorPane(Widget):
 
         def g(widget_id: str) -> str:
             try:
-                return self.query_one(f"#{widget_id}", LabeledInput).value.strip()
+                return self.query_one(f"#{widget_id}", Input).value.strip()
             except Exception:
                 return ""
 

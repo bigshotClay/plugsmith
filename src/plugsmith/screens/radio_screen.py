@@ -42,7 +42,11 @@ class RadioPane(Widget, SubprocessRunner):
 
     DEFAULT_CSS = """
     RadioPane {
+        height: 1fr;
         padding: 1 2;
+    }
+    RadioPane > Vertical {
+        height: 1fr;
     }
     RadioPane .row {
         height: 3;

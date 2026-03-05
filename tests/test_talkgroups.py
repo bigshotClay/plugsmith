@@ -145,6 +145,22 @@ class TestTalkgroupClientBrandMeister:
         assert len(reg) == 1
         assert 9 in reg
 
+    def test_brandmeister_error_body_as_200_handled_gracefully(self, tmp_path):
+        """BrandMeister sometimes returns an error dict with 200 OK (e.g. rate limit).
+        list(raw.values()) yields strings which raise AttributeError on .get() — must not crash."""
+        raw = {"error": "Too many requests", "status": "429"}
+        with patch("plugsmith.builder.talkgroups.requests.Session") as MockSession:
+            mock_resp = MagicMock()
+            mock_resp.json.return_value = raw
+            mock_resp.raise_for_status = MagicMock()
+            MockSession.return_value.get.return_value = mock_resp
+            MockSession.return_value.headers = {}
+
+            client = TalkgroupClient(cache_dir=str(tmp_path), rate_limit=0)
+            reg = client.fetch_registry(networks=["brandmeister"])
+
+        assert len(reg) == 0  # no valid TGs parsed, but no crash
+
     def test_brandmeister_dict_response_handled(self, tmp_path):
         """BrandMeister may return a dict keyed by TG ID instead of a list."""
         raw = {"9": {"id": 9, "name": "Local"}, "93": {"id": 93, "name": "NAm"}}
